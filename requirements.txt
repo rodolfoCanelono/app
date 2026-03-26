@@ -1,0 +1,5 @@
+pandas
+openpyxl
+streamlit
+tkcalendar
+altair==4.2.2
