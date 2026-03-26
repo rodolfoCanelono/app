@@ -24,11 +24,11 @@ def cargar_datos():
 
 # --- LÓGICA DE INTERFAZ ---
 
-st.title("📊 Mi Gestión Financiera")
+st.title("📊 Mis Gastos del Hogar")
 st.markdown("---")
 
 # Crear dos pestañas: una para Cargar y otra para Ver Historial
-tab1, tab2 = st.tabs(["📝 Registrar Gasto", "📈 Dashboard e Historial"])
+tab1, tab2 = st.tabs(["📝 Registrar Gastos", "📈 Dashboard e Historial"])
 
 with tab1:
     st.subheader("Nuevo Registro")
