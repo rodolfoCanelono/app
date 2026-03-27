@@ -29,7 +29,7 @@ def cargar_datos():
             return pd.DataFrame(columns=['Fecha', 'Concepto', 'Monto', 'Responsable'])
     return pd.DataFrame(columns=['Fecha', 'Concepto', 'Monto', 'Responsable'])
 
-st.title("📊 Mis Gastos del Hogar")
+st.title("📊 Gastos del Hogar")
 st.markdown("---")
 
 tab1, tab2 = st.tabs(["📝 Registrar Gastos", "📈 Dashboard e Historial"])
