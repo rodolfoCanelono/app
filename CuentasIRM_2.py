@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from sqlalchemy import text
+import os
+st.write("DATABASE_URL env var:", os.getenv("DATABASE_URL"))
 
 st.set_page_config(page_title="Gastos Hogar", layout="wide")
 
