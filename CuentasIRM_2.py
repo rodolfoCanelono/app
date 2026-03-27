@@ -8,7 +8,7 @@ import plotly.express as px
 st.set_page_config(
     page_title="Gestor de Gastos ICCI",
     page_icon="💰",
-    layout="wide" # Cambiado a wide para que las gráficas se vean mejor
+    layout="wide" 
 )
 
 NOMBRE_ARCHIVO = 'Gestion_Financiera.xlsx'
@@ -62,13 +62,13 @@ with tab1:
             st.success(f"✅ Registrado con éxito")
             st.rerun()
 
-# --- PESTAÑA 2: DASHBOARD (CON FILTROS Y GRÁFICAS) ---
+# --- PESTAÑA 2: DASHBOARD ---
 with tab2:
     df = cargar_datos()
 
     if not df.empty:
         # --- SECCIÓN DE FILTROS ---
-        st.subheader("🔍 Filtros Dinámicos")
+        st.subheader("🔍 Filtros de Búsqueda")
         col_f1, col_f2, col_f3, col_f4 = st.columns(4)
         
         with col_f1:
@@ -80,7 +80,7 @@ with tab2:
         with col_f4:
             que_gasto = st.selectbox("Concepto", ["Todos"] + LISTA_CONCEPTOS)
 
-        # Lógica de Filtrado (AND)
+        # Lógica de Filtrado
         mask = (df['Fecha'].dt.date >= inicio) & (df['Fecha'].dt.date <= fin)
         if quien != "Todos":
             mask = mask & (df['Responsable'] == quien)
@@ -91,44 +91,45 @@ with tab2:
 
         # --- SECCIÓN DE PAGOS DIVIDIDOS ---
         st.markdown("---")
-        total = df_filtrado['Monto'].sum()
-        mitad = total / 2
+        total_filtrado = df_filtrado['Monto'].sum()
+        mitad = total_filtrado / 2
         
-        st.write("⚖️ **División de Gastos (Monto / 2)**")
+        st.write("⚖️ **División de Gastos (Monto Total / 2)**")
         c_i, c_r, c_t = st.columns(3)
         with c_i:
             st.info(f"**Irisysleyer**\n\n${mitad:,.0f}")
         with c_r:
             st.success(f"**Rodolfo**\n\n${mitad:,.0f}")
         with c_t:
-            st.metric("Total Filtrado", f"${total:,.0f}")
+            st.metric("Total General", f"${total_filtrado:,.0f}")
 
-        # --- SECCIÓN DE GRÁFICAS (Reflejan los filtros) ---
+        # --- SECCIÓN DE GRÁFICAS ---
         st.markdown("---")
-        st.subheader("📊 Análisis Visual del Periodo")
+        st.subheader("📊 Análisis de Distribución")
         
         col_graf1, col_graf2 = st.columns(2)
         
         with col_graf1:
-            st.write("**Gastos por Concepto**")
+            st.write("**Distribución por Concepto**")
             gastos_concepto = df_filtrado.groupby('Concepto')['Monto'].sum().reset_index()
-            fig_bar = px.bar(gastos_concepto, x='Concepto', y='Monto', 
-                            color='Concepto', text_auto='.2s',
-                            color_discrete_sequence=px.colors.qualitative.Pastel)
-            fig_bar.update_layout(showlegend=False, height=350)
-            st.plotly_chart(fig_bar, use_container_width=True)
+            fig_pie_concepto = px.pie(gastos_concepto, values='Monto', names='Concepto', 
+                                     hole=0.4, 
+                                     color_discrete_sequence=px.colors.qualitative.Pastel)
+            fig_pie_concepto.update_traces(textinfo='percent+label')
+            st.plotly_chart(fig_pie_concepto, use_container_width=True)
 
         with col_graf2:
-            st.write("**Participación por Responsable**")
+            st.write("**Distribución por Responsable**")
             gastos_persona = df_filtrado.groupby('Responsable')['Monto'].sum().reset_index()
-            fig_pie = px.pie(gastos_persona, values='Monto', names='Responsable', 
-                            hole=0.4, color_discrete_sequence=px.colors.qualitative.Safe)
-            fig_pie.update_layout(height=350)
-            st.plotly_chart(fig_pie, use_container_width=True)
+            fig_pie_persona = px.pie(gastos_persona, values='Monto', names='Responsable', 
+                                    hole=0.4, 
+                                    color_discrete_sequence=px.colors.qualitative.Safe)
+            fig_pie_persona.update_traces(textinfo='percent+label')
+            st.plotly_chart(fig_pie_persona, use_container_width=True)
 
         # --- TABLA DE DATOS ---
         st.markdown("---")
-        st.write("📋 **Detalle del Historial Filtrado**")
+        st.write("📋 **Historial Detallado**")
         df_display = df_filtrado.copy().sort_values(by='Fecha', ascending=False)
         df_display['Fecha'] = df_display['Fecha'].dt.strftime('%d/%m/%Y')
         
@@ -143,7 +144,7 @@ with tab2:
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
     else:
-        st.info("No hay datos registrados aún.")
+        st.info("No hay datos que coincidan con los filtros.")
 
 # Pie de página técnico
 st.sidebar.markdown("### Configuración")
