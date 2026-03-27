@@ -11,8 +11,9 @@ st.set_page_config(
     layout="wide" 
 )
 
-# --- CONFIGURACIÓN DEL MOTOR (ENGINE) ---
-DB_URL = "postgresql://postgres:Maniclo-2026@db.oldbexdvxquhbtpchqwe.supabase.co:5432/postgres"
+# Cambia la línea del engine por esta:
+# Nota: Cambiamos el puerto de 5432 a 6543
+DB_URL = "postgresql://postgres:Maniclo-2026@db.oldbexdvxquhbtpchqwe.supabase.co:6543/postgres"
 engine = create_engine(DB_URL)
 
 # --- LISTAS DE SELECCIÓN ESTÁNDAR ---
