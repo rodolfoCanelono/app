@@ -13,12 +13,7 @@ st.set_page_config(
 )
 
 engine = create_engine("postgresql://postgres:Maniclo-2026@db.oldbexdvxquhbtpchqwe.supabase.co:5432/postgres")
-conn = st.connection(
-    "postgresql", 
-    type="sql", 
-    #url="postgresql://postgres:admin@localhost:5432/GastosIRM"
-    url="postgresql://postgres:Maniclo-2026@db.oldbexdvxquhbtpchqwe.supabase.co:5432/postgres"
-)
+
 
 # --- LISTAS DE SELECCIÓN ESTÁNDAR ---
 LISTA_RESPONSABLES = ["Rodolfo", "Irisysleyer", "Machulon"]
