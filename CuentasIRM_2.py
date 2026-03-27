@@ -1,24 +1,25 @@
-import streamlit as st
-import pandas as pd
-from datetime import datetime
 import plotly.express as px
 from sqlalchemy import create_engine, text
 
-# 1. Configuración de la aplicación
+# 1. Configuración de la página
 st.set_page_config(
-    page_title="Gestor de Gastos ICCI - Postgres",
+    page_title="Gestor de Gastos ICCI - Supabase",
     page_icon="💰",
-    layout="wide" 
+    layout="wide"
 )
 
-# Cambia la línea del engine por esta:
-# Nota: Cambiamos el puerto de 5432 a 6543
-# Añadimos ?sslmode=verify-full o require y cambiamos al puerto 6543 (Pooler)
+# 2. Configuración de la base de datos (Supabase)
+# Usamos el puerto 6543 que es más estable para redes con restricciones
+DB_URL = "postgresql://postgres:Maniclo-2026@db.oldbexdvxquhbtpchqwe.supabase.co:6543/postgres?sslmode=require"
 
-DB_URL = "postgresql://postgres:Maniclo-2026@db.oldbexdvxquhbtpchqwe.supabase.co:5432/postgres?sslmode=require"
-engine = create_engine(DB_URL)
+# Creamos el motor de conexión con parámetros de estabilidad
+engine = create_engine(
+    DB_URL,
+    connect_args={"connect_timeout": 10},
+    pool_pre_ping=True
+)
 
-# --- LISTAS DE SELECCIÓN ESTÁNDAR ---
+# 3. Listas de selección
 LISTA_RESPONSABLES = ["Rodolfo", "Irisysleyer", "Machulon"]
 LISTA_CONCEPTOS = [
     "Comida", "Universidad Max", "Medicinas", "Ropa Max", 
@@ -26,8 +27,9 @@ LISTA_CONCEPTOS = [
     "SII - Box Bodega", "SII - Depto"
 ]
 
+# 4. Funciones de Base de Datos
 def inicializar_db():
-    """Crea la tabla en Supabase si no existe"""
+    """Crea la tabla si no existe al iniciar la app"""
     try:
         with engine.connect() as conn:
             query = text("""
@@ -42,125 +44,98 @@ def inicializar_db():
             conn.execute(query)
             conn.commit()
     except Exception as e:
-        st.error(f"Error al inicializar la base de datos: {e}")
+        st.error(f"Error de conexión a Supabase: {e}")
 
 def cargar_datos_db():
-    """Consulta todos los datos usando el engine con manejo de errores"""
+    """Trae los datos desde Supabase a un DataFrame"""
     try:
         query = "SELECT fecha, concepto, monto, responsable FROM gastos_hogar;"
-        df = pd.read_sql(query, engine)
-        return df
-    except Exception as e:
-        # Si la tabla no existe o hay error, devolvemos un DF vacío con columnas
+        return pd.read_sql(query, engine)
+    except Exception:
         return pd.DataFrame(columns=['fecha', 'concepto', 'monto', 'responsable'])
 
 def guardar_gasto_db(fecha, concepto, monto, responsable):
-    """Inserta un nuevo registro usando el engine"""
+    """Inserta un nuevo registro"""
     try:
         with engine.connect() as conn:
             query = text("""
                 INSERT INTO gastos_hogar (fecha, concepto, monto, responsable) 
                 VALUES (:f, :c, :m, :r);
             """)
-            conn.execute(
-                query, 
-                {"f": fecha, "c": concepto, "m": monto, "r": responsable}
-            )
+            conn.execute(query, {"f": fecha, "c": concepto, "m": monto, "r": responsable})
             conn.commit()
+            return True
     except Exception as e:
-        st.error(f"Error al guardar el gasto: {e}")
+        st.error(f"Error al guardar: {e}")
+        return False
 
-# Ejecutar inicialización
+# --- EJECUCIÓN INICIAL ---
 inicializar_db()
 
-st.title("📊 Gastos del Hogar (PostgreSQL - Supabase)")
+# 5. Interfaz de Usuario (UI)
+st.title("📊 Control de Gastos del Hogar")
 st.markdown("---")
 
-tab1, tab2 = st.tabs(["📝 Registrar Gastos", "📈 Dashboard"])
+tab1, tab2 = st.tabs(["📝 Registrar Gasto", "📈 Análisis y Dashboard"])
 
-# --- PESTAÑA 1: REGISTRO ---
+# --- PESTAÑA 1: FORMULARIO ---
 with tab1:
-    st.subheader("Nuevo Registro")
+    st.subheader("Nuevo Registro de Gasto")
     with st.form("form_gastos", clear_on_submit=True):
-        col_reg1, col_reg2 = st.columns(2)
-    
-        with col_reg1:
-            concepto_in = st.selectbox("¿En qué gastaste?", LISTA_CONCEPTOS)
-            monto_in = st.number_input("¿Monto del Gasto?", min_value=1000, step=1000)
-   
-        with col_reg2:
-            fecha_in = st.date_input("¿Fecha del gasto?", datetime.now(), format="DD/MM/YYYY")
-            responsable_in = st.selectbox("¿Quién realizó el gasto?", LISTA_RESPONSABLES)
+        col1, col2 = st.columns(2)
         
-        boton_guardar = st.form_submit_button("Guardar Gasto")
-
-    if boton_guardar:
-        guardar_gasto_db(fecha_in, concepto_in, monto_in, responsable_in)
-        st.success(f"✅ Registrado con éxito en Supabase.")
-        st.rerun()
+        with col1:
+            concepto_sel = st.selectbox("Concepto", LISTA_CONCEPTOS)
+            monto_num = st.number_input("Monto ($)", min_value=0, step=1000)
+        
+        with col2:
+            fecha_sel = st.date_input("Fecha", datetime.now())
+            responsable_sel = st.selectbox("Responsable", LISTA_RESPONSABLES)
+        
+        btn_enviar = st.form_submit_button("Guardar en Supabase")
+        
+        if btn_enviar:
+            if monto_num > 0:
+                if guardar_gasto_db(fecha_sel, concepto_sel, monto_num, responsable_sel):
+                    st.success(f"✅ Gasto de {responsable_sel} guardado correctamente.")
+                    st.rerun()
+            else:
+                st.warning("Por favor ingresa un monto mayor a 0.")
 
 # --- PESTAÑA 2: DASHBOARD ---
 with tab2:
     df = cargar_datos_db()
-
-    # CAMBIO CRÍTICO: Verificamos que el DF no sea None y tenga datos
-    if df is not None and not df.empty:
+    
+    if not df.empty:
         df['fecha'] = pd.to_datetime(df['fecha'])
-
-        st.subheader("🔍 Filtros de Búsqueda")
-        col_f1, col_f2, col_f3, col_f4 = st.columns(4)
         
-        with col_f1:
-            # Protegemos el filtro de fechas si el DF está casi vacío
-            min_f = df['fecha'].min().date() if not df.empty else datetime.now().date()
-            inicio = st.date_input("Desde", min_f)
-        with col_f2:
-            max_f = df['fecha'].max().date() if not df.empty else datetime.now().date()
-            fin = st.date_input("Hasta", max_f)
-        with col_f3:
-            quien = st.selectbox("Responsable", ["Todos"] + LISTA_RESPONSABLES)
-        with col_f4:
-            que_gasto = st.selectbox("Concepto", ["Todos"] + LISTA_CONCEPTOS)
-
-        # Aplicar filtros
-        mask = (df['fecha'].dt.date >= inicio) & (df['fecha'].dt.date <= fin)
-        if quien != "Todos":
-            mask = mask & (df['responsable'] == quien)
-        if que_gasto != "Todos":
-            mask = mask & (df['concepto'] == que_gasto)
+        # Métricas rápidas
+        total = df['monto'].sum()
+        mitad = total / 2
         
-        df_filtrado = df.loc[mask]
-
-        if not df_filtrado.empty:
-            # --- SECCIÓN DE PAGOS ---
-            st.markdown("---")
-            total_filtrado = df_filtrado['monto'].sum()
-            mitad = total_filtrado / 2
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Gasto Total", f"${total:,.0f}")
+        c2.metric("Cuota Irisysleyer", f"${mitad:,.0f}")
+        c3.metric("Cuota Rodolfo", f"${mitad:,.0f}")
+        
+        st.markdown("---")
+        
+        # Gráficas
+        g1, g2 = st.columns(2)
+        with g1:
+            fig_conc = px.pie(df, values='monto', names='concepto', title="Gastos por Concepto", hole=0.4)
+            st.plotly_chart(fig_conc, use_container_width=True)
+        with g2:
+            fig_resp = px.pie(df, values='monto', names='responsable', title="Gastos por Responsable", hole=0.4)
+            st.plotly_chart(fig_resp, use_container_width=True)
             
-            st.write("⚖️ **División Equitativa**")
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Irisysleyer (50%)", f"${mitad:,.0f}")
-            c2.metric("Rodolfo (50%)", f"${mitad:,.0f}")
-            c3.metric("Total General", f"${total_filtrado:,.0f}")
-
-            # --- GRÁFICAS ---
-            st.markdown("---")
-            c_graf1, c_graf2 = st.columns(2)
-            with c_graf1:
-                fig1 = px.pie(df_filtrado, values='monto', names='concepto', hole=0.4, title="Por Concepto")
-                st.plotly_chart(fig1, use_container_width=True)
-            with c_graf2:
-                fig2 = px.pie(df_filtrado, values='monto', names='responsable', hole=0.4, title="Por Responsable")
-                st.plotly_chart(fig2, use_container_width=True)
-
-            # --- TABLA ---
-            st.markdown("---")
-            df_display = df_filtrado.copy().sort_values(by='fecha', ascending=False)
-            df_display['fecha'] = df_display['fecha'].dt.strftime('%d/%m/%Y')
-            st.dataframe(df_display, use_container_width=True)
-        else:
-            st.warning("No hay registros para los filtros seleccionados.")
+        # Tabla detallada
+        st.subheader("Historial de Movimientos")
+        st.dataframe(df.sort_values('fecha', ascending=False), use_container_width=True)
     else:
-        st.info("La base de datos está vacía. Por favor, registra un gasto en la pestaña anterior.")
+        st.info("Aún no hay datos registrados en Supabase.")
 
-st.sidebar.markdown(f"**Estado:** Conectado a Supabase")
+# Barra lateral informativa
+st.sidebar.markdown("### 🛠 Estado de Sistemas")
+st.sidebar.info("Base de Datos: Supabase (PostgreSQL)")
+st.sidebar.write(f"Última actualización: {datetime.now().strftime('%H:%M:%S')}")
