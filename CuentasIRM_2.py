@@ -7,6 +7,7 @@ st.set_page_config(page_title="Gastos Hogar", layout="wide")
 
 # Conexión nativa de Streamlit (Lee de los Secrets)
 conn = st.connection("postgresql", type="sql")
+st.write("Conexión actual:", conn)
 
 st.title("💰 Control de Gastos del Hogar")
 
