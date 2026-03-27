@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime
 import plotly.express as px
 from sqlalchemy import text  # <--- Agrega esta línea
+from sqlalchemy import create_engine
 
 # 1. Configuración de la aplicación
 st.set_page_config(
@@ -11,6 +12,7 @@ st.set_page_config(
     layout="wide" 
 )
 
+engine = create_engine("postgresql://postgres:Maniclo-2026@db.oldbexdvxquhbtpchqwe.supabase.co:5432/postgres")
 conn = st.connection(
     "postgresql", 
     type="sql", 
