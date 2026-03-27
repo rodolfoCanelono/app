@@ -6,3 +6,5 @@ streamlit==1.31.1
 pandas==2.1.4
 pyarrow==14.0.1
 plotly>=5.18.0
+sqlalchemy
+psycopg2-binary
