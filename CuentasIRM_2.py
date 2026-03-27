@@ -12,7 +12,6 @@ st.set_page_config(
 )
 
 # --- CONFIGURACIÓN DEL MOTOR (ENGINE) ---
-# Usamos directamente tu cadena de conexión de Supabase
 DB_URL = "postgresql://postgres:Maniclo-2026@db.oldbexdvxquhbtpchqwe.supabase.co:5432/postgres"
 engine = create_engine(DB_URL)
 
@@ -43,14 +42,13 @@ def inicializar_db():
         st.error(f"Error al inicializar la base de datos: {e}")
 
 def cargar_datos_db():
-    """Consulta todos los datos usando el engine"""
+    """Consulta todos los datos usando el engine con manejo de errores"""
     try:
         query = "SELECT fecha, concepto, monto, responsable FROM gastos_hogar;"
-        # Leemos directamente a un DataFrame de Pandas
         df = pd.read_sql(query, engine)
         return df
     except Exception as e:
-        st.error(f"Error al cargar datos: {e}")
+        # Si la tabla no existe o hay error, devolvemos un DF vacío con columnas
         return pd.DataFrame(columns=['fecha', 'concepto', 'monto', 'responsable'])
 
 def guardar_gasto_db(fecha, concepto, monto, responsable):
@@ -102,17 +100,20 @@ with tab1:
 with tab2:
     df = cargar_datos_db()
 
-    if not df.empty:
-        # Asegurar formato de fecha
+    # CAMBIO CRÍTICO: Verificamos que el DF no sea None y tenga datos
+    if df is not None and not df.empty:
         df['fecha'] = pd.to_datetime(df['fecha'])
 
         st.subheader("🔍 Filtros de Búsqueda")
         col_f1, col_f2, col_f3, col_f4 = st.columns(4)
         
         with col_f1:
-            inicio = st.date_input("Desde", df['fecha'].min().date())
+            # Protegemos el filtro de fechas si el DF está casi vacío
+            min_f = df['fecha'].min().date() if not df.empty else datetime.now().date()
+            inicio = st.date_input("Desde", min_f)
         with col_f2:
-            fin = st.date_input("Hasta", df['fecha'].max().date())
+            max_f = df['fecha'].max().date() if not df.empty else datetime.now().date()
+            fin = st.date_input("Hasta", max_f)
         with col_f3:
             quien = st.selectbox("Responsable", ["Todos"] + LISTA_RESPONSABLES)
         with col_f4:
@@ -127,38 +128,36 @@ with tab2:
         
         df_filtrado = df.loc[mask]
 
-        # --- SECCIÓN DE PAGOS ---
-        st.markdown("---")
-        total_filtrado = df_filtrado['monto'].sum()
-        mitad = total_filtrado / 2
-        
-        st.write("⚖️ **División Equitativa**")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Irisysleyer (50%)", f"${mitad:,.0f}")
-        c2.metric("Rodolfo (50%)", f"${mitad:,.0f}")
-        c3.metric("Total General", f"${total_filtrado:,.0f}")
+        if not df_filtrado.empty:
+            # --- SECCIÓN DE PAGOS ---
+            st.markdown("---")
+            total_filtrado = df_filtrado['monto'].sum()
+            mitad = total_filtrado / 2
+            
+            st.write("⚖️ **División Equitativa**")
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Irisysleyer (50%)", f"${mitad:,.0f}")
+            c2.metric("Rodolfo (50%)", f"${mitad:,.0f}")
+            c3.metric("Total General", f"${total_filtrado:,.0f}")
 
-        # --- GRÁFICAS ---
-        st.markdown("---")
-        c_graf1, c_graf2 = st.columns(2)
-        
-        with c_graf1:
-            st.write("**Gasto por Concepto**")
-            fig1 = px.pie(df_filtrado, values='monto', names='concepto', hole=0.4)
-            st.plotly_chart(fig1, use_container_width=True)
+            # --- GRÁFICAS ---
+            st.markdown("---")
+            c_graf1, c_graf2 = st.columns(2)
+            with c_graf1:
+                fig1 = px.pie(df_filtrado, values='monto', names='concepto', hole=0.4, title="Por Concepto")
+                st.plotly_chart(fig1, use_container_width=True)
+            with c_graf2:
+                fig2 = px.pie(df_filtrado, values='monto', names='responsable', hole=0.4, title="Por Responsable")
+                st.plotly_chart(fig2, use_container_width=True)
 
-        with c_graf2:
-            st.write("**Gasto por Responsable**")
-            fig2 = px.pie(df_filtrado, values='monto', names='responsable', hole=0.4)
-            st.plotly_chart(fig2, use_container_width=True)
-
-        # --- TABLA ---
-        st.markdown("---")
-        df_display = df_filtrado.copy().sort_values(by='fecha', ascending=False)
-        df_display['fecha'] = df_display['fecha'].dt.strftime('%d/%m/%Y')
-        st.dataframe(df_display, use_container_width=True)
-
+            # --- TABLA ---
+            st.markdown("---")
+            df_display = df_filtrado.copy().sort_values(by='fecha', ascending=False)
+            df_display['fecha'] = df_display['fecha'].dt.strftime('%d/%m/%Y')
+            st.dataframe(df_display, use_container_width=True)
+        else:
+            st.warning("No hay registros para los filtros seleccionados.")
     else:
-        st.info("No hay datos para mostrar.")
+        st.info("La base de datos está vacía. Por favor, registra un gasto en la pestaña anterior.")
 
-st.sidebar.info(f"Conectado a: {DB_URL.split('@')[1]}")
+st.sidebar.markdown(f"**Estado:** Conectado a Supabase")
