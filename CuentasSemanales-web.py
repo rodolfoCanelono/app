@@ -6,7 +6,7 @@ import plotly.express as px
 
 # 1. Configuración de la aplicación
 st.set_page_config(
-    page_title="Gestor de Gastos ICCI",
+    page_title="Gestor de Gastos",
     page_icon="💰",
     layout="wide" 
 )
