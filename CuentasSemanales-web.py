@@ -15,11 +15,12 @@ NOMBRE_ARCHIVO = 'Gestion_Financiera.xlsx'
 
 # --- LISTAS DE SELECCIÓN ESTÁNDAR ---
 LISTA_RESPONSABLES = ["Rodolfo", "Irisysleyer", "Machulon"]
-LISTA_CONCEPTOS = ["Comida", "Universidad Max", "Medicinas", "Ropa Max", "Regalos", "Enseres", "Depto"]
+LISTA_CONCEPTOS = ["Comida", "Universidad Max", "Medicinas", "Ropa Max", "Regalos", "Enseres", "Gastos comunes","Hipotecario","Luz","Agua",
+                   "SII Box-Bodega"]
 
 def cargar_datos():
     if os.path.exists(NOMBRE_ARCHIVO):
-        try:
+        try:Depto",SII 
             df = pd.read_excel(NOMBRE_ARCHIVO)
             df['Fecha'] = pd.to_datetime(df['Fecha'], errors='coerce')
             if 'Responsable' not in df.columns:
