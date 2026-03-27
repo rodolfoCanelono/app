@@ -11,14 +11,11 @@ st.set_page_config(
     layout="wide" 
 )
 
-# --- CONFIGURACIÓN DE CONEXIÓN ---
-# Se utiliza st.connection para manejar el pool de conexiones a Postgres
-# conn = st.connection("postgresql", type="sql")
-
 conn = st.connection(
     "postgresql", 
     type="sql", 
-    url="postgresql://postgres:admin@localhost:5432/GastosIRM"
+    #url="postgresql://postgres:admin@localhost:5432/GastosIRM"
+    url="postgresql://postgres:Maniclo-2026@db.oldbexdvxquhbtpchqwe.supabase.co:5432/postgres"
 )
 
 # --- LISTAS DE SELECCIÓN ESTÁNDAR ---
