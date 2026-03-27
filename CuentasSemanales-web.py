@@ -37,7 +37,7 @@ with tab1:
     with st.form("form_gastos", clear_on_submit=True):
         concepto = st.text_input("¿En qué gastaste?", placeholder="Ej: Comidas, medicinas...")
         monto = st.number_input("Monto ($)", min_value=0.0, step=0.01, format="%.2f")
-        fecha = st.date_input("Fecha del gasto", datetime.now())
+        fecha = st.date_input("Fecha del gasto", datetime.now(),format="DD/MM/YYYY")
         btn_guardar = st.form_submit_button("Guardar en Excel")
 
     if btn_guardar:
