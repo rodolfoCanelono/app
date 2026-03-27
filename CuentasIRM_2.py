@@ -15,7 +15,8 @@ NOMBRE_ARCHIVO = 'Gestion_Financiera.xlsx'
 
 # --- LISTAS DE SELECCIÓN ESTÁNDAR ---
 LISTA_RESPONSABLES = ["Rodolfo", "Irisysleyer", "Machulon"]
-LISTA_CONCEPTOS = ["Comida", "Universidad Max", "Medicinas", "Ropa Max", "Regalos", "Enseres", "Depto"]
+LISTA_CONCEPTOS = ["Comida", "Universidad Max", "Medicinas", "Ropa Max", "Regalos", "Enseres", "Gastos Comunes","Hipotecario","SII - Box Bodega",
+                   "SII - Depto"]
 
 def cargar_datos():
     if os.path.exists(NOMBRE_ARCHIVO):
@@ -32,18 +33,20 @@ def cargar_datos():
 st.title("📊 Gastos del Hogar")
 st.markdown("---")
 
-tab1, tab2 = st.tabs(["📝 Registrar Gastos", "📈 Dashboard e Historial"])
+tab1, tab2 = st.tabs(["📝 Registrar Gastos", "📈 Dashboard "])
 
 # --- PESTAÑA 1: REGISTRO ---
 with tab1:
     st.subheader("Nuevo Registro")
     with st.form("form_gastos", clear_on_submit=True):
         col_reg1, col_reg2 = st.columns(2)
+    
         with col_reg1:
             concepto_in = st.selectbox("¿En qué gastaste?", LISTA_CONCEPTOS)
-            monto_in = st.number_input("Monto ($)", min_value=0.0, step=100.0)
+            monto_in = st.number_input("¿Monto del Gasto?",min_value=1000, step=1000)
+   
         with col_reg2:
-            fecha_in = st.date_input("Fecha del gasto", datetime.now(), format="DD/MM/YYYY")
+            fecha_in = st.date_input("¿Fecha del gasto:?",datetime.now(), format="DD/MM/YYYY")
             responsable_in = st.selectbox("¿Quién realizó el gasto?", LISTA_RESPONSABLES)
         
         boton_guardar = st.form_submit_button("Guardar Gasto")
