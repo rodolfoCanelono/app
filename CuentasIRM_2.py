@@ -14,7 +14,10 @@ st.set_page_config(
 # Cambia la línea del engine por esta:
 # Nota: Cambiamos el puerto de 5432 a 6543
 DB_URL = "postgresql://postgres:Maniclo-2026@db.oldbexdvxquhbtpchqwe.supabase.co:6543/postgres"
-engine = create_engine(DB_URL)
+engine = create_engine(
+    DB_URL,
+    connect_args={"sslmode": "require"} # Supabase exige SSL en conexiones externas
+)
 
 # --- LISTAS DE SELECCIÓN ESTÁNDAR ---
 LISTA_RESPONSABLES = ["Rodolfo", "Irisysleyer", "Machulon"]
