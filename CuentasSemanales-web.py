@@ -20,7 +20,7 @@ LISTA_CONCEPTOS = ["Comida", "Universidad Max", "Medicinas", "Ropa Max", "Regalo
 
 def cargar_datos():
     if os.path.exists(NOMBRE_ARCHIVO):
-        try:Depto",SII 
+        try:
             df = pd.read_excel(NOMBRE_ARCHIVO)
             df['Fecha'] = pd.to_datetime(df['Fecha'], errors='coerce')
             if 'Responsable' not in df.columns:
