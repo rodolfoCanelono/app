@@ -11,15 +11,18 @@ st.set_page_config(
     layout="wide"
 )
 
-# 2. Configuración de la base de datos (Supabase)
-# Usamos el puerto 6543 que es más estable para redes con restricciones
-DB_URL = "postgresql://postgres:Maniclo-2026@db.oldbexdvxquhbtpchqwe.supabase.co:6543/postgres?sslmode=require"
-
-# Creamos el motor de conexión con parámetros de estabilidad
+# Intenta con esta URL que añade parámetros de estabilidad de red
+DB_URL = "postgresql://postgres:Maniclo-2026@db.oldbexdvxquhbtpchqwe.supabase.co:6543/postgres?sslmode=require&connect_timeout=10"
 engine = create_engine(
     DB_URL,
-    connect_args={"connect_timeout": 10},
-    pool_pre_ping=True
+    pool_pre_ping=True,
+    pool_recycle=300,
+    connect_args={
+        "keepalives": 1,
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 5,
+    }
 )
 
 # 3. Listas de selección
