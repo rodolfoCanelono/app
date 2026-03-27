@@ -1,39 +1,76 @@
 import streamlit as st
 import pandas as pd
-import os
 from datetime import datetime
 import plotly.express as px
+from sqlalchemy import text  # <--- Agrega esta línea
 
 # 1. Configuración de la aplicación
 st.set_page_config(
-    page_title="Gestor de Gastos ICCI",
+    page_title="Gestor de Gastos ICCI - Postgres",
     page_icon="💰",
     layout="wide" 
 )
 
-NOMBRE_ARCHIVO = 'Gestion_Financiera.xlsx'
+# --- CONFIGURACIÓN DE CONEXIÓN ---
+# Se utiliza st.connection para manejar el pool de conexiones a Postgres
+# conn = st.connection("postgresql", type="sql")
+
+conn = st.connection(
+    "postgresql", 
+    type="sql", 
+    url="postgresql://postgres:admin@localhost:5432/GastosIRM"
+)
 
 # --- LISTAS DE SELECCIÓN ESTÁNDAR ---
 LISTA_RESPONSABLES = ["Rodolfo", "Irisysleyer", "Machulon"]
-LISTA_CONCEPTOS = ["Comida", "Universidad Max", "Medicinas", "Ropa Max", "Regalos", "Enseres", "Gastos Comunes","Hipotecario","SII - Box Bodega",
-                   "SII - Depto"]
+LISTA_CONCEPTOS = [
+    "Comida", "Universidad Max", "Medicinas", "Ropa Max", 
+    "Regalos", "Enseres", "Gastos Comunes", "Hipotecario", 
+    "SII - Box Bodega", "SII - Depto"
+]
 
-def cargar_datos():
-    if os.path.exists(NOMBRE_ARCHIVO):
-        try:
-            df = pd.read_excel(NOMBRE_ARCHIVO)
-            df['Fecha'] = pd.to_datetime(df['Fecha'], errors='coerce')
-            if 'Responsable' not in df.columns:
-                df['Responsable'] = "No especificado"
-            return df
-        except Exception:
-            return pd.DataFrame(columns=['Fecha', 'Concepto', 'Monto', 'Responsable'])
-    return pd.DataFrame(columns=['Fecha', 'Concepto', 'Monto', 'Responsable'])
+def inicializar_db():
+    """Crea la tabla si no existe"""
+    with conn.session as session:
+        # Envolvemos el SQL con la función text()
+        query = text("""
+            CREATE TABLE IF NOT EXISTS gastos_hogar (
+                id SERIAL PRIMARY KEY,
+                fecha DATE NOT NULL,
+                concepto TEXT NOT NULL,
+                monto FLOAT NOT NULL,
+                responsable TEXT NOT NULL
+            );
+        """)
+        session.execute(query)
+        session.commit()
 
-st.title("📊 Gastos del Hogar")
+def cargar_datos_db():
+    """Consulta todos los datos de la tabla"""
+    # ttl=0 asegura que no use caché y siempre traiga datos frescos
+    return conn.query("SELECT fecha, concepto, monto, responsable FROM gastos_hogar;", ttl=0)
+
+def guardar_gasto_db(fecha, concepto, monto, responsable):
+    """Inserta un nuevo registro en Postgres"""
+    with conn.session as session:
+        # También envolvemos el INSERT
+        query = text("""
+            INSERT INTO gastos_hogar (fecha, concepto, monto, responsable) 
+            VALUES (:f, :c, :m, :r);
+        """)
+        session.execute(
+            query, 
+            {"f": fecha, "c": concepto, "m": monto, "r": responsable}
+        )
+        session.commit()
+
+# Ejecutar inicialización
+inicializar_db()
+
+st.title("📊 Gastos del Hogar (PostgreSQL)")
 st.markdown("---")
 
-tab1, tab2 = st.tabs(["📝 Registrar Gastos", "📈 Dashboard "])
+tab1, tab2 = st.tabs(["📝 Registrar Gastos", "📈 Dashboard"])
 
 # --- PESTAÑA 1: REGISTRO ---
 with tab1:
@@ -43,58 +80,51 @@ with tab1:
     
         with col_reg1:
             concepto_in = st.selectbox("¿En qué gastaste?", LISTA_CONCEPTOS)
-            monto_in = st.number_input("¿Monto del Gasto?",min_value=1000, step=1000)
+            monto_in = st.number_input("¿Monto del Gasto?", min_value=1000, step=1000)
    
         with col_reg2:
-            fecha_in = st.date_input("¿Fecha del gasto:?",datetime.now(), format="DD/MM/YYYY")
+            fecha_in = st.date_input("¿Fecha del gasto?", datetime.now(), format="DD/MM/YYYY")
             responsable_in = st.selectbox("¿Quién realizó el gasto?", LISTA_RESPONSABLES)
         
         boton_guardar = st.form_submit_button("Guardar Gasto")
 
     if boton_guardar:
-        if monto_in > 0:
-            df_actual = cargar_datos()
-            nuevo_gasto = pd.DataFrame({
-                'Fecha': [pd.to_datetime(fecha_in)], 
-                'Concepto': [concepto_in], 
-                'Monto': [monto_in],
-                'Responsable': [responsable_in]
-            })
-            df_final = pd.concat([df_actual, nuevo_gasto], ignore_index=True)
-            df_final.to_excel(NOMBRE_ARCHIVO, index=False)
-            st.success(f"✅ Registrado con éxito")
-            st.rerun()
+        guardar_gasto_db(fecha_in, concepto_in, monto_in, responsable_in)
+        st.success(f"✅ Registrado en Postgres: {concepto_in}")
+        st.rerun()
 
 # --- PESTAÑA 2: DASHBOARD ---
 with tab2:
-    df = cargar_datos()
+    df = cargar_datos_db()
 
     if not df.empty:
-        # --- SECCIÓN DE FILTROS ---
+        # Asegurar que la fecha sea datetime para filtros
+        df['fecha'] = pd.to_datetime(df['fecha'])
+
         st.subheader("🔍 Filtros de Búsqueda")
         col_f1, col_f2, col_f3, col_f4 = st.columns(4)
         
         with col_f1:
-            inicio = st.date_input("Desde", df['Fecha'].min().date(), format="DD/MM/YYYY")
+            inicio = st.date_input("Desde", df['fecha'].min().date(), format="DD/MM/YYYY")
         with col_f2:
-            fin = st.date_input("Hasta", df['Fecha'].max().date(), format="DD/MM/YYYY")
+            fin = st.date_input("Hasta", df['fecha'].max().date(), format="DD/MM/YYYY")
         with col_f3:
             quien = st.selectbox("Responsable", ["Todos"] + LISTA_RESPONSABLES)
         with col_f4:
             que_gasto = st.selectbox("Concepto", ["Todos"] + LISTA_CONCEPTOS)
 
         # Lógica de Filtrado
-        mask = (df['Fecha'].dt.date >= inicio) & (df['Fecha'].dt.date <= fin)
+        mask = (df['fecha'].dt.date >= inicio) & (df['fecha'].dt.date <= fin)
         if quien != "Todos":
-            mask = mask & (df['Responsable'] == quien)
+            mask = mask & (df['responsable'] == quien)
         if que_gasto != "Todos":
-            mask = mask & (df['Concepto'] == que_gasto)
+            mask = mask & (df['concepto'] == que_gasto)
         
         df_filtrado = df.loc[mask]
 
         # --- SECCIÓN DE PAGOS DIVIDIDOS ---
         st.markdown("---")
-        total_filtrado = df_filtrado['Monto'].sum()
+        total_filtrado = df_filtrado['monto'].sum()
         mitad = total_filtrado / 2
         
         st.write("⚖️ **División de Gastos (Monto Total / 2)**")
@@ -114,41 +144,29 @@ with tab2:
         
         with col_graf1:
             st.write("**Distribución por Concepto**")
-            gastos_concepto = df_filtrado.groupby('Concepto')['Monto'].sum().reset_index()
-            fig_pie_concepto = px.pie(gastos_concepto, values='Monto', names='Concepto', 
-                                     hole=0.4, 
-                                     color_discrete_sequence=px.colors.qualitative.Pastel)
+            gastos_concepto = df_filtrado.groupby('concepto')['monto'].sum().reset_index()
+            fig_pie_concepto = px.pie(gastos_concepto, values='monto', names='concepto', 
+                                     hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
             fig_pie_concepto.update_traces(textinfo='percent+label')
             st.plotly_chart(fig_pie_concepto, use_container_width=True)
 
         with col_graf2:
             st.write("**Distribución por Responsable**")
-            gastos_persona = df_filtrado.groupby('Responsable')['Monto'].sum().reset_index()
-            fig_pie_persona = px.pie(gastos_persona, values='Monto', names='Responsable', 
-                                    hole=0.4, 
-                                    color_discrete_sequence=px.colors.qualitative.Safe)
+            gastos_persona = df_filtrado.groupby('responsable')['monto'].sum().reset_index()
+            fig_pie_persona = px.pie(gastos_persona, values='monto', names='responsable', 
+                                    hole=0.4, color_discrete_sequence=px.colors.qualitative.Safe)
             fig_pie_persona.update_traces(textinfo='percent+label')
             st.plotly_chart(fig_pie_persona, use_container_width=True)
 
         # --- TABLA DE DATOS ---
         st.markdown("---")
         st.write("📋 **Historial Detallado**")
-        df_display = df_filtrado.copy().sort_values(by='Fecha', ascending=False)
-        df_display['Fecha'] = df_display['Fecha'].dt.strftime('%d/%m/%Y')
-        
+        df_display = df_filtrado.copy().sort_values(by='fecha', ascending=False)
+        df_display['fecha'] = df_display['fecha'].dt.strftime('%d/%m/%Y')
         st.dataframe(df_display, use_container_width=True)
 
-        # Botón de descarga
-        with open(NOMBRE_ARCHIVO, "rb") as f:
-            st.download_button(
-                label="📥 Descargar Excel",
-                data=f,
-                file_name="Gestion_Financiera.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
     else:
         st.info("No hay datos que coincidan con los filtros.")
 
-# Pie de página técnico
 st.sidebar.markdown("### Configuración")
-st.sidebar.info("Esta Web App guarda los datos en un archivo Excel local o en la nube según donde se despliegue.")
+st.sidebar.success("Conectado a PostgreSQL")
