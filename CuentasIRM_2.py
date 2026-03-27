@@ -29,21 +29,26 @@ LISTA_CONCEPTOS = [
     "SII - Box Bodega", "SII - Depto"
 ]
 
+from sqlalchemy import text # Importante importar esto
+
 def inicializar_db():
-    """Crea la tabla si no existe"""
-    with conn.session as session:
-        # Envolvemos el SQL con la función text()
-        query = text("""
-            CREATE TABLE IF NOT EXISTS gastos_hogar (
-                id SERIAL PRIMARY KEY,
-                fecha DATE NOT NULL,
-                concepto TEXT NOT NULL,
-                monto FLOAT NOT NULL,
-                responsable TEXT NOT NULL
-            );
-        """)
-        session.execute(query)
-        session.commit()
+    try:
+        with conn.session as session:
+            query = text("""
+                CREATE TABLE IF NOT EXISTS gastos_hogar (
+                    id SERIAL PRIMARY KEY,
+                    fecha DATE NOT NULL,
+                    concepto TEXT NOT NULL,
+                    monto FLOAT NOT NULL,
+                    responsable TEXT NOT NULL
+                );
+            """)
+            session.execute(query)
+            session.commit()
+    except Exception as e:
+        # Esto imprimirá el error real en tu terminal de VS Code / CMD
+        st.error(f"Error de conexión: {e}")
+        print(f"DEBUG ERROR: {e}")
 
 def cargar_datos_db():
     """Consulta todos los datos de la tabla"""
