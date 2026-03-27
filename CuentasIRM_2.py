@@ -15,7 +15,7 @@ st.set_page_config(
 # Nota: Cambiamos el puerto de 5432 a 6543
 # Añadimos ?sslmode=verify-full o require y cambiamos al puerto 6543 (Pooler)
 
-DB_URL = "postgresql://postgres:Maniclo-2026@db.oldbexdvxquhbtpchqwe.supabase.co:6543/postgres?sslmode=require"
+DB_URL = "postgresql://postgres:Maniclo-2026@db.oldbexdvxquhbtpchqwe.supabase.co:5432/postgres?sslmode=require"
 engine = create_engine(DB_URL)
 
 # --- LISTAS DE SELECCIÓN ESTÁNDAR ---
