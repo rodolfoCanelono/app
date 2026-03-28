@@ -11,9 +11,13 @@ host = s['host'].replace("\n","").strip()
 port = s['port'].replace("\n","").strip()
 dbname = s['dbname'].replace("\n","").strip()
 sslmode = s['sslmode'].replace("\n","").strip()
+tira="postgresql://"+user+":"+password+"@"+host+":"+port+"/"+dbname+"?sslmode="+sslmode
+print(tira)
+conn_url = tira
 
 # --- Concatenar URL ---
-conn_url = f"postgresql://{user}:{password}@{host}:{port}/{dbname}?sslmode={sslmode}"
+#conn_url = f"postgresql://{user}:{password}@{host}:{port}/{dbname}?sslmode={sslmode}"
+
 st.write("URL final limpia:", repr(conn_url))  # Para debug
 
 # --- Crear engine de SQLAlchemy ---
