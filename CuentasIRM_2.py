@@ -2,7 +2,12 @@ import os
 from sqlalchemy import create_engine, text
 import streamlit as st
 s = st.secrets["connections"]["postgresql"]
-print('user' ,s['user'],'password ', s['password'],'host ', s['host'],'dbname ',s['dbname'],'sslmode ',s['sslmode'])
+st.write("User:", s['user'])
+st.write("Password:", s['password'])
+st.write("Host:", s['host'])
+st.write("Port:", s['port'])
+st.write("DB Name:", s['dbname'])
+st.write("SSL Mode:", s['sslmode'])
 conn_url = f"postgresql://{s['user']}:{s['password']}@{s['host']}:{s['port']}/{s['dbname']}?sslmode={s['sslmode']}"
 
 st.write("URL final:", repr(conn_url))
