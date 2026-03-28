@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 import streamlit as st
-
-conn_url = st.secrets["connections"]["postgresql"]["url"].replace("\n", "").strip()
+conn_url = st.secrets["connections"]["postgresql"]["url"]
+conn_url = conn_url.replace("\n", "").replace("\r", "").strip()
 engine = create_engine(conn_url)
 st.write(repr(conn_url))
 try:
