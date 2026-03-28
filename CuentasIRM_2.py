@@ -3,25 +3,15 @@ from sqlalchemy import create_engine, text
 
 # --- Leer secretos separados ---
 s = st.secrets["connections"]["postgresql"]
+# Limpiar espacios y saltos de línea
+user = s['user'].strip()
+password = s['password'].strip()
+host = s['host'].strip()
+port = s['port'].strip()
+dbname = s['dbname'].strip()
+sslmode = s['sslmode'].strip()
 
-# Mostrar valores (excepto contraseña) para debug
-st.write("🔹 Conexión a Supabase")
-st.write("User:", s['user'])
-st.write("Host:", s['host'])
-st.write("Port:", s['port'])
-st.write("DB Name:", s['dbname'])
-st.write("SSL Mode:", s['sslmode'])
-st.write("Password: 🔒 Oculta")
-
-# --- Concatenar manualmente cada parte para armar la URL ---
-conn_url = (
-    "postgresql://"
-    + s['user'] + ":" + s['password']
-    + "@" + s['host'] + ":" + s['port']
-    + "/" + s['dbname']
-    + "?sslmode=" + s['sslmode']
-)
-
+conn_url = f"postgresql://{user}:{password}@{host}:{port}/{dbname}?sslmode={sslmode}"
 st.write("URL final limpia:", repr(conn_url))  # Para debug
 
 # --- Crear engine de SQLAlchemy ---
