@@ -1,13 +1,9 @@
 import os
 from sqlalchemy import create_engine, text
 import streamlit as st
-
-conn_url = os.environ["DB_URL"]
-
-st.write("URL final:", repr(conn_url))
-
+s = st.secrets["connections"]["postgresql"]
+conn_url = f"postgresql://{s['user']}:{s['password']}@{s['host']}:{s['port']}/{s['dbname']}?sslmode={s['sslmode']}"
 engine = create_engine(conn_url)
-
 try:
     with engine.connect() as conn:
         conn.execute(text("SELECT 1"))
