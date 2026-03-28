@@ -1,6 +1,7 @@
 import streamlit as st
+import socket
 from sqlalchemy import create_engine, text
-
+socket.getaddrinfo('db.oldbexdvxquhbtpchqwe.supabase.co', 5432, socket.AF_INET)
 # --- Leer secretos separados ---
 s = st.secrets["connections"]["postgresql"]
 
