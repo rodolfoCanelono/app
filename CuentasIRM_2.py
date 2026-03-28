@@ -2,7 +2,7 @@ from sqlalchemy import create_engine, text
 import streamlit as st
 
 conn_url = st.secrets["connections"]["postgresql"]["url"]
-conn_url = conn_url.replace("\n", "").replace("\r", "").strip()
+conn_url = "".join(conn_url.split())
 
 st.write("URL limpia:", repr(conn_url))
 
