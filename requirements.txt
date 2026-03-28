@@ -8,4 +8,3 @@ pyarrow==14.0.1
 plotly>=5.18.0
 sqlalchemy
 psycopg2-binary
-socket
