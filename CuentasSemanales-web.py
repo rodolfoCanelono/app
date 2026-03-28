@@ -6,7 +6,7 @@ import os
 from supabase import create_client, Client
 
 # Cargar la imagen
-img_icono = Image.open("Rodolfo_Final.png")
+img_icono = Image.open("Rodolfo-Final.png")
 # 1. Configuración de la aplicación
 st.set_page_config(
     page_title="Gestor de Gastos - Rodolfo Canelón",
