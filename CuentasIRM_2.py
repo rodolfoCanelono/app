@@ -12,7 +12,7 @@ port = s['port'].replace("\n","").strip()
 dbname = s['dbname'].replace("\n","").strip()
 sslmode = s['sslmode'].replace("\n","").strip()
 tira="postgresql://"+user+":"+password+"@"+host+":"+port+"/"+dbname+"?sslmode="+sslmode
-print(tira)
+st.write("mi tira:",tira)
 conn_url = tira
 
 # --- Concatenar URL ---
