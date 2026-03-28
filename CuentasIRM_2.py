@@ -1,15 +1,11 @@
+import os
 from sqlalchemy import create_engine, text
 import streamlit as st
 
-# Leer el secret (puede tener saltos de línea)
-conn_url_raw = st.secrets["connections"]["postgresql"]["url"]
+conn_url = os.environ["DB_URL"]
 
-# 🔥 Limpiar saltos de línea y espacios invisibles
-conn_url = "".join(conn_url_raw.split())
+st.write("URL final:", repr(conn_url))
 
-st.write("URL final limpia:", repr(conn_url))
-
-# Crear engine
 engine = create_engine(conn_url)
 
 try:
