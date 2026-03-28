@@ -7,7 +7,7 @@ from supabase import create_client, Client
 
 # 1. Configuración de la aplicación
 st.set_page_config(
-    page_title="Gestor de Gastos ICCI - Supabase",
+    page_title="Gestor de Gastos - Rodolfo Canelón",
     page_icon="💰",
     layout="wide" 
 )
@@ -60,7 +60,7 @@ def guardar_gasto_db(fecha, concepto, monto, responsable):
 
 # --- INTERFAZ DE STREAMLIT ---
 
-st.title("📊 Gastos del Hogar (Supabase)")
+st.title("📊 Gestión de Gastos del Hogar")
 st.markdown("---")
 
 tab1, tab2 = st.tabs(["📝 Registrar Gastos", "📈 Dashboard"])
