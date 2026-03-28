@@ -10,7 +10,8 @@ host = s['host'].replace("\n","").strip()
 port = s['port'].replace("\n","").strip()
 dbname = s['dbname'].replace("\n","").strip()
 sslmode = s['sslmode'].replace("\n","").strip()
-tira="postgresql://postgres:Maniclo-2026@db.oldbexdvxquhbtpchqwe.supabase.co:6543/postgres?sslmode=require"
+"postgresql://postgres:Maniclo-2026@db.oldbexdvxquhbtpchqwe.supabase.co:5432/postgres"
+tira="postgresql://postgres:Maniclo-2026@db.oldbexdvxquhbtpchqwe.supabase.co:5432/postgres"
 st.write("mi tira:",repr(tira))
 conn_url = tira
 
