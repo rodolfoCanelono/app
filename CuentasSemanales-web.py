@@ -4,7 +4,7 @@ from datetime import datetime
 import plotly.express as px
 import os
 from supabase import create_client, Client
-
+from PIL import Image
 # Cargar la imagen
 img_icono = Image.open("Rodolfo-Final.png")
 # 1. Configuración de la aplicación
