@@ -9,4 +9,3 @@ plotly>=5.18.0
 sqlalchemy
 psycopg2-binary
 supabase
-PIL
