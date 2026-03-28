@@ -1,39 +1,69 @@
 import streamlit as st
 import pandas as pd
-import os
 from datetime import datetime
 import plotly.express as px
+import os
+from supabase import create_client, Client
 
 # 1. Configuración de la aplicación
 st.set_page_config(
-    page_title="Gestor de Gastos ICCI",
+    page_title="Gestor de Gastos ICCI - Supabase",
     page_icon="💰",
     layout="wide" 
 )
 
-NOMBRE_ARCHIVO = 'Gestion_Financiera.xlsx'
+# --- CONFIGURACIÓN DE CONEXIÓN ---
+# Se obtienen las variables desde el entorno o secrets de Streamlit
+url: str = os.environ.get("SUPABASE_URL") or st.secrets.get("SUPABASE_URL")
+key: str = os.environ.get("SUPABASE_KEY") or st.secrets.get("SUPABASE_KEY")
+
+if not url or not key:
+    st.error("Faltan las credenciales de Supabase. Configúralas en los Secrets de Streamlit.")
+    st.stop()
+
+supabase: Client = create_client(url, key)
 
 # --- LISTAS DE SELECCIÓN ESTÁNDAR ---
 LISTA_RESPONSABLES = ["Rodolfo", "Irisysleyer", "Machulon"]
-LISTA_CONCEPTOS = ["Comida", "Universidad Max", "Medicinas", "Ropa Max", "Regalos", "Enseres", "Gastos Comunes","Hipotecario","SII - Box Bodega",
-                   "SII - Depto"]
+LISTA_CONCEPTOS = [
+    "Comida", "Universidad Max", "Medicinas", "Ropa Max", 
+    "Regalos", "Enseres", "Gastos Comunes", "Hipotecario", 
+    "SII - Box Bodega", "SII - Depto"
+]
 
-def cargar_datos():
-    if os.path.exists(NOMBRE_ARCHIVO):
-        try:
-            df = pd.read_excel(NOMBRE_ARCHIVO)
-            df['Fecha'] = pd.to_datetime(df['Fecha'], errors='coerce')
-            if 'Responsable' not in df.columns:
-                df['Responsable'] = "No especificado"
-            return df
-        except Exception:
-            return pd.DataFrame(columns=['Fecha', 'Concepto', 'Monto', 'Responsable'])
-    return pd.DataFrame(columns=['Fecha', 'Concepto', 'Monto', 'Responsable'])
+# --- FUNCIONES DE BASE DE DATOS ---
 
-st.title("📊 Gastos del Hogar")
+def cargar_datos_db():
+    """Consulta todos los datos desde la tabla de Supabase"""
+    try:
+        # Realiza la consulta a la tabla 'gastos_hogar'
+        response = supabase.table("gastos_hogar").select("fecha, concepto, monto, responsable").execute()
+        return pd.DataFrame(response.data)
+    except Exception as e:
+        st.error(f"Error al cargar datos: {e}")
+        return pd.DataFrame()
+
+def guardar_gasto_db(fecha, concepto, monto, responsable):
+    """Inserta un nuevo registro en Supabase"""
+    nuevo_gasto = {
+        "fecha": fecha.strftime("%Y-%m-%d"), # Convertir fecha a string para JSON
+        "concepto": concepto,
+        "monto": monto,
+        "responsable": responsable
+    }
+    try:
+        supabase.table("gastos_hogar").insert(nuevo_gasto).execute()
+        return True
+    except Exception as e:
+        st.error(f"Error al guardar: {e}")
+        return False
+
+# --- INTERFAZ DE STREAMLIT ---
+
+st.title("📊 Gastos del Hogar (Supabase)")
 st.markdown("---")
 
-tab1, tab2 = st.tabs(["📝 Registrar Gastos", "📈 Dashboard "])
+tab1, tab2 = st.tabs(["📝 Registrar Gastos", "📈 Dashboard"])
 
 # --- PESTAÑA 1: REGISTRO ---
 with tab1:
@@ -43,112 +73,80 @@ with tab1:
     
         with col_reg1:
             concepto_in = st.selectbox("¿En qué gastaste?", LISTA_CONCEPTOS)
-            monto_in = st.number_input("¿Monto del Gasto?",min_value=1000, step=1000)
+            monto_in = st.number_input("¿Monto del Gasto?", min_value=1000, step=1000)
    
         with col_reg2:
-            fecha_in = st.date_input("¿Fecha del gasto:?",datetime.now(), format="DD/MM/YYYY")
+            fecha_in = st.date_input("¿Fecha del gasto?", datetime.now())
             responsable_in = st.selectbox("¿Quién realizó el gasto?", LISTA_RESPONSABLES)
         
         boton_guardar = st.form_submit_button("Guardar Gasto")
 
     if boton_guardar:
-        if monto_in > 0:
-            df_actual = cargar_datos()
-            nuevo_gasto = pd.DataFrame({
-                'Fecha': [pd.to_datetime(fecha_in)], 
-                'Concepto': [concepto_in], 
-                'Monto': [monto_in],
-                'Responsable': [responsable_in]
-            })
-            df_final = pd.concat([df_actual, nuevo_gasto], ignore_index=True)
-            df_final.to_excel(NOMBRE_ARCHIVO, index=False)
-            st.success(f"✅ Registrado con éxito")
+        if guardar_gasto_db(fecha_in, concepto_in, monto_in, responsable_in):
+            st.success(f"✅ Registrado en Supabase: {concepto_in}")
             st.rerun()
 
 # --- PESTAÑA 2: DASHBOARD ---
 with tab2:
-    df = cargar_datos()
+    df = cargar_datos_db()
 
     if not df.empty:
-        # --- SECCIÓN DE FILTROS ---
+        # Asegurar formato de fecha
+        df['fecha'] = pd.to_datetime(df['fecha'])
+
         st.subheader("🔍 Filtros de Búsqueda")
         col_f1, col_f2, col_f3, col_f4 = st.columns(4)
         
         with col_f1:
-            inicio = st.date_input("Desde", df['Fecha'].min().date(), format="DD/MM/YYYY")
+            inicio = st.date_input("Desde", df['fecha'].min().date())
         with col_f2:
-            fin = st.date_input("Hasta", df['Fecha'].max().date(), format="DD/MM/YYYY")
+            fin = st.date_input("Hasta", df['fecha'].max().date())
         with col_f3:
             quien = st.selectbox("Responsable", ["Todos"] + LISTA_RESPONSABLES)
         with col_f4:
             que_gasto = st.selectbox("Concepto", ["Todos"] + LISTA_CONCEPTOS)
 
-        # Lógica de Filtrado
-        mask = (df['Fecha'].dt.date >= inicio) & (df['Fecha'].dt.date <= fin)
+        # Lógica de Filtrado en Pandas
+        mask = (df['fecha'].dt.date >= inicio) & (df['fecha'].dt.date <= fin)
         if quien != "Todos":
-            mask = mask & (df['Responsable'] == quien)
+            mask = mask & (df['responsable'] == quien)
         if que_gasto != "Todos":
-            mask = mask & (df['Concepto'] == que_gasto)
+            mask = mask & (df['concepto'] == que_gasto)
         
         df_filtrado = df.loc[mask]
 
-        # --- SECCIÓN DE PAGOS DIVIDIDOS ---
+        # --- SECCIÓN DE PAGOS ---
         st.markdown("---")
-        total_filtrado = df_filtrado['Monto'].sum()
+        total_filtrado = df_filtrado['monto'].sum()
         mitad = total_filtrado / 2
         
-        st.write("⚖️ **División de Gastos (Monto Total / 2)**")
+        st.write("⚖️ **División de Gastos (Total / 2)**")
         c_i, c_r, c_t = st.columns(3)
-        with c_i:
-            st.info(f"**Irisysleyer**\n\n${mitad:,.0f}")
-        with c_r:
-            st.success(f"**Rodolfo**\n\n${mitad:,.0f}")
-        with c_t:
-            st.metric("Total General", f"${total_filtrado:,.0f}")
+        with c_i: st.info(f"**Irisysleyer**\n\n${mitad:,.0f}")
+        with c_r: st.success(f"**Rodolfo**\n\n${mitad:,.0f}")
+        with c_t: st.metric("Total General", f"${total_filtrado:,.0f}")
 
-        # --- SECCIÓN DE GRÁFICAS ---
+        # --- GRÁFICAS ---
         st.markdown("---")
-        st.subheader("📊 Análisis de Distribución")
-        
         col_graf1, col_graf2 = st.columns(2)
         
         with col_graf1:
-            st.write("**Distribución por Concepto**")
-            gastos_concepto = df_filtrado.groupby('Concepto')['Monto'].sum().reset_index()
-            fig_pie_concepto = px.pie(gastos_concepto, values='Monto', names='Concepto', 
-                                     hole=0.4, 
-                                     color_discrete_sequence=px.colors.qualitative.Pastel)
-            fig_pie_concepto.update_traces(textinfo='percent+label')
-            st.plotly_chart(fig_pie_concepto, use_container_width=True)
+            gastos_concepto = df_filtrado.groupby('concepto')['monto'].sum().reset_index()
+            fig = px.pie(gastos_concepto, values='monto', names='concepto', hole=0.4, title="Por Concepto")
+            st.plotly_chart(fig, use_container_width=True)
 
         with col_graf2:
-            st.write("**Distribución por Responsable**")
-            gastos_persona = df_filtrado.groupby('Responsable')['Monto'].sum().reset_index()
-            fig_pie_persona = px.pie(gastos_persona, values='Monto', names='Responsable', 
-                                    hole=0.4, 
-                                    color_discrete_sequence=px.colors.qualitative.Safe)
-            fig_pie_persona.update_traces(textinfo='percent+label')
-            st.plotly_chart(fig_pie_persona, use_container_width=True)
+            gastos_persona = df_filtrado.groupby('responsable')['monto'].sum().reset_index()
+            fig = px.pie(gastos_persona, values='monto', names='responsable', hole=0.4, title="Por Responsable")
+            st.plotly_chart(fig, use_container_width=True)
 
-        # --- TABLA DE DATOS ---
+        # --- TABLA ---
         st.markdown("---")
-        st.write("📋 **Historial Detallado**")
-        df_display = df_filtrado.copy().sort_values(by='Fecha', ascending=False)
-        df_display['Fecha'] = df_display['Fecha'].dt.strftime('%d/%m/%Y')
-        
+        df_display = df_filtrado.copy().sort_values(by='fecha', ascending=False)
+        df_display['fecha'] = df_display['fecha'].dt.strftime('%d/%m/%Y')
         st.dataframe(df_display, use_container_width=True)
-
-        # Botón de descarga
-        with open(NOMBRE_ARCHIVO, "rb") as f:
-            st.download_button(
-                label="📥 Descargar Excel",
-                data=f,
-                file_name="Gestion_Financiera.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
     else:
-        st.info("No hay datos que coincidan con los filtros.")
+        st.info("No hay datos registrados aún.")
 
-# Pie de página técnico
 st.sidebar.markdown("### Configuración")
-st.sidebar.info("Esta Web App guarda los datos en un archivo Excel local o en la nube según donde se despliegue.")
+st.sidebar.success("Conectado a Supabase")
