@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, text
 import streamlit as st
-
+st.write(st.secrets)
 conn_url = st.secrets["connections"]["postgresql"]["url"]
 conn_url = "".join(conn_url.split())
 
