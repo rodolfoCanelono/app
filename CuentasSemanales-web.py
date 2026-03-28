@@ -53,6 +53,7 @@ def guardar_gasto_db(fecha, concepto, monto, responsable):
     }
     try:
         supabase.table("gastos_hogar").insert(nuevo_gasto).execute()
+        st.write(" ✔️ Gasto guardado")
         return True
     except Exception as e:
         st.error(f"Error al guardar: {e}")
