@@ -11,9 +11,7 @@ st.write("Host:", s['host'])
 st.write("Port:", s['port'])
 st.write("DB Name:", s['dbname'])
 st.write("SSL Mode:", s['sslmode'])
-# ⚠️ No mostramos la contraseña directamente en producción
-st.write("Password: 🔒 Oculta")
-
+st.write("Password:",s['password'])
 # --- Construir URL de conexión limpia ---
 # Esto elimina saltos de línea o espacios invisibles
 conn_url = f"postgresql://{s['user']}:{s['password']}@{s['host']}:{s['port']}/{s['dbname']}?sslmode={s['sslmode']}"
