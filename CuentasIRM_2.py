@@ -3,7 +3,6 @@ import socket
 from sqlalchemy import create_engine, text
 # --- Leer secretos separados ---
 s = st.secrets["connections"]["postgresql"]
-
 # Limpiar saltos de línea y espacios
 user = s['user'].replace("\n","").strip()
 password = 'Maniclo2026'.replace("\n","").strip()
@@ -11,7 +10,7 @@ host = s['host'].replace("\n","").strip()
 port = s['port'].replace("\n","").strip()
 dbname = s['dbname'].replace("\n","").strip()
 sslmode = s['sslmode'].replace("\n","").strip()
-tira="postgresql://postgres:Maniclo2026@db.oldbexdvxquhbtpchqwe.supabase.co:6543/postgres?sslmode=require"
+tira="postgresql://postgres:Maniclo-2026@db.oldbexdvxquhbtpchqwe.supabase.co:6543/postgres?sslmode=require"
 st.write("mi tira:",repr(tira))
 conn_url = tira
 
