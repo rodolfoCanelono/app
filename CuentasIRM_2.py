@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, text
 s = st.secrets["connections"]["postgresql"]
 # Limpiar saltos de línea y espacios
 user = s['user'].replace("\n","").strip()
-password = 'Maniclo2026'.replace("\n","").strip()
+password = 'Maniclo-2026'.replace("\n","").strip()
 host = s['host'].replace("\n","").strip()
 port = s['port'].replace("\n","").strip()
 dbname = s['dbname'].replace("\n","").strip()
