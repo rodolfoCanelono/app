@@ -113,35 +113,49 @@ with tab3:
         
         # Preparación de datos temporales
         df['mes_año'] = df['fecha'].dt.to_period('M').astype(str)
+        
+        # Agrupamos por mes y responsable
         resumen_temporal = df.groupby(['mes_año', 'responsable'])['monto'].sum().reset_index()
         
-        # Gráfico de Barras Comparativo
+        # 1. GRÁFICO DE BARRAS APILADAS (Mejor para comparar y ver totales)
         fig_barra = px.bar(
             resumen_temporal, 
             x='mes_año', 
             y='monto', 
             color='responsable',
-            barmode='group',
-            title="Comparativa Mensual: Quién paga más",
-            labels={'mes_año': 'Periodo', 'monto': 'Total ($)'},
-            text_auto='.2s'
+            title="Distribución Mensual por Quien Paga",
+            labels={'mes_año': 'Periodo (Mes)', 'monto': 'Total ($)', 'responsable': 'Responsable'},
+            text_auto='.2s', # Muestra el valor dentro de la barra
+            color_discrete_sequence=px.colors.qualitative.Set2
         )
+        fig_barra.update_layout(xaxis_type='category') # Asegura que los meses se vean en orden
         st.plotly_chart(fig_barra, use_container_width=True)
 
-        # Tabla Pivotante de Resumen
-        st.write("**Detalle por Mes ($)**")
+        st.markdown("---")
+        
+        # 2. GRÁFICO DE ÁREA PARA TENDENCIA (Más ilustrativo que línea simple)
+        st.subheader("📈 Tendencia de Volumen de Gasto")
+        tendencia_total = df.groupby('mes_año')['monto'].sum().reset_index()
+        
+        fig_area = px.area(
+            tendencia_total,
+            x='mes_año', 
+            y='monto', 
+            title="Fluctuación del Gasto Total Mensual",
+            labels={'mes_año': 'Mes', 'monto': 'Gasto Total ($)'},
+            markers=True,
+            line_shape="spline" # Hace que la línea sea curva y suave
+        )
+        fig_area.update_traces(fillcolor="rgba(26, 115, 232, 0.2)", line_color="#1A73E8")
+        st.plotly_chart(fig_area, use_container_width=True)
+
+        # 3. TABLA DE DETALLE (Pivot)
+        st.markdown("---")
+        st.write("**Resumen Numérico Mensual**")
         pivot_mes = resumen_temporal.pivot(index='mes_año', columns='responsable', values='monto').fillna(0)
-        pivot_mes['Total Mes'] = pivot_mes.sum(axis=1)
+        pivot_mes['Total Mensual'] = pivot_mes.sum(axis=1)
         st.dataframe(pivot_mes.style.format("${:,.0f}"), use_container_width=True)
         
-        # Gráfico de Tendencia Lineal
-        fig_linea = px.line(
-            resumen_temporal.groupby('mes_año')['monto'].sum().reset_index(),
-            x='mes_año', y='monto', title="Tendencia de Gasto Total",
-            markers=True
-        )
-        st.plotly_chart(fig_linea, use_container_width=True)
     else:
         st.info("Registra datos para ver el análisis temporal.")
-
 st.sidebar.success("Conectado a Supabase")
