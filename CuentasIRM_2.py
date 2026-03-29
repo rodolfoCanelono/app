@@ -194,7 +194,7 @@ with tab3:
                 hole=0.5,
                 title="Distribución de Aportes"
             )
-            fig2.update_traces(text=textos,textinfo='text')
+            fig_pie_cuadre.update_traces(text=textos,textinfo='text')
             st.plotly_chart(fig_pie_cuadre, use_container_width=True)
         with col_t:
             st.write("**Saldos Calculados**")
