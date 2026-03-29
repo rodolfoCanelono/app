@@ -182,11 +182,10 @@ with tab3:
     )   
     st.plotly_chart(fig_pie_h, use_container_width=True)
 
-   with col_an1:
-    st.write("**Proporción del Gasto Total (Torta)**")
-    
-    # Asegúrate de usar 'monto' como valor numérico
-    fig_pie_h = px.pie(
+    with col_an1:
+        st.write("**Proporción del Gasto Total (Torta)**")
+        # Asegúrate de usar 'monto' como valor numérico
+        fig_pie_h = px.pie(
         total_historico, 
         values='monto',        # <--- CAMBIO CLAVE: Usa el dinero real, no el %
         names='responsable', 
