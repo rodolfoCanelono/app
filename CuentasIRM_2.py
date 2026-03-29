@@ -147,6 +147,9 @@ with tab2:
             st.plotly_chart(fig1, use_container_width=True)
         with g2:
             df_sum_r = df_f.groupby('responsable')['monto'].sum().reset_index()
+            tot = df_sum_r['monto'].sum()
+            porcentajes = [f"{(v/tot)*100:.1f}%" for v in df_sum_r['monto']]
+            textos = [f"${monto:,.0f} ({p})" for monto, p in zip(df_sum_c['monto'], porcentajes)]
             fig2 = px.pie(
                 df_sum_r,
                 values='monto',
@@ -154,7 +157,7 @@ with tab2:
                 hole=0.4,
                 title="Monto por Responsable"
             )
-            fig2.update_traces(text=[f"${v:,.0f}" for v in df_sum_r['monto']],textinfo='text+percent')
+            fig2.update_traces(text=textos,textinfo='text')
             st.plotly_chart(fig2, use_container_width=True)
             
         st.subheader("📋 Detalle de Registros")
