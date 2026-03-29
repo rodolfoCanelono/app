@@ -53,7 +53,7 @@ def cargar_datos_db():
 
 def guardar_gasto_db(fecha, concepto, monto, responsable, forma_pago):
     nuevo_gasto = {
-        "fecha": fecha.strftime("%Y-%m-%d"), 
+        "fecha": fecha.strftime("%d-%m-%y"), 
         "concepto": concepto,
         "monto": float(monto), 
         "responsable": responsable, 
@@ -90,7 +90,7 @@ with tab1:
         col_reg1, col_reg2 = st.columns(2)
         with col_reg1:
             concepto_in = st.selectbox("¿En qué gastaste?", LISTA_CONCEPTOS)
-            monto_in = st.number_input("Monto del Gasto", min_value=0, step=1000, format="%d")
+            monto_in = st.number_input("Monto del Gasto", min_value=2000, step=2000, format="%d")
             forma_pago_in = st.selectbox("Forma de Pago", LISTA_FORMAS_PAGO)
         with col_reg2:
             fecha_in = st.date_input("Fecha", datetime.now())
