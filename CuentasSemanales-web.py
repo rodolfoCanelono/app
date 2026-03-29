@@ -109,53 +109,61 @@ with tab2:
 # --- PESTAÑA 3: ANÁLISIS TEMPORAL ---
 with tab3:
     if not df.empty:
-        st.subheader("📅 Evolución Mensual de Gastos")
+        st.subheader("📅 Análisis de Evolución Mensual")
         
-        # Preparación de datos temporales
-        df['mes_año'] = df['fecha'].dt.to_period('M').astype(str)
+        # 1. Preparación robusta de datos
+        df_temp = df.copy()
+        df_temp['fecha'] = pd.to_datetime(df_temp['fecha'])
+        # Ordenamos por fecha primero para que el gráfico sea cronológico
+        df_temp = df_temp.sort_values('fecha')
+        # Creamos la etiqueta de mes (Ej: 2024-01)
+        df_temp['mes_año'] = df_temp['fecha'].dt.strftime('%Y-%m')
         
-        # Agrupamos por mes y responsable
-        resumen_temporal = df.groupby(['mes_año', 'responsable'])['monto'].sum().reset_index()
-        
-        # 1. GRÁFICO DE BARRAS APILADAS (Mejor para comparar y ver totales)
-        fig_barra = px.bar(
-            resumen_temporal, 
-            x='mes_año', 
-            y='monto', 
+        # Agrupación para los gráficos
+        resumen_mensual = df_temp.groupby(['mes_año', 'responsable'])['monto'].sum().reset_index()
+
+        # 2. GRÁFICO 1: COMPARATIVA DE BARRAS APILADAS
+        # Este gráfico permite ver el total del mes y cuánto puso cada uno
+        st.write("**¿Quién paga cada mes? (Distribución Acumulada)**")
+        fig_barras = px.bar(
+            resumen_mensual,
+            x='mes_año',
+            y='monto',
             color='responsable',
-            title="Distribución Mensual por Quien Paga",
-            labels={'mes_año': 'Periodo (Mes)', 'monto': 'Total ($)', 'responsable': 'Responsable'},
-            text_auto='.2s', # Muestra el valor dentro de la barra
-            color_discrete_sequence=px.colors.qualitative.Set2
+            title="Gasto Total Mensual por Responsable",
+            labels={'mes_año': 'Mes', 'monto': 'Suma de Monto ($)', 'responsable': 'Quién Pagó'},
+            text_auto='.2s', # Muestra el valor abreviado (ej: 1.2M)
+            barmode='stack'   # Apila las barras una sobre otra
         )
-        fig_barra.update_layout(xaxis_type='category') # Asegura que los meses se vean en orden
-        st.plotly_chart(fig_barra, use_container_width=True)
+        fig_barras.update_layout(xaxis_title="Mes", yaxis_title="Monto Total ($)")
+        st.plotly_chart(fig_barras, use_container_width=True)
 
         st.markdown("---")
-        
-        # 2. GRÁFICO DE ÁREA PARA TENDENCIA (Más ilustrativo que línea simple)
-        st.subheader("📈 Tendencia de Volumen de Gasto")
-        tendencia_total = df.groupby('mes_año')['monto'].sum().reset_index()
-        
+
+        # 3. GRÁFICO 2: TENDENCIA DE ÁREA (Más ilustrativo)
+        # Ideal para ver si el gasto sube o baja en el tiempo
+        st.write("**Tendencia y Volumen de Gasto**")
         fig_area = px.area(
-            tendencia_total,
-            x='mes_año', 
-            y='monto', 
-            title="Fluctuación del Gasto Total Mensual",
-            labels={'mes_año': 'Mes', 'monto': 'Gasto Total ($)'},
-            markers=True,
-            line_shape="spline" # Hace que la línea sea curva y suave
+            resumen_mensual,
+            x='mes_año',
+            y='monto',
+            color='responsable',
+            title="Evolución del Flujo de Caja por Responsable",
+            labels={'mes_año': 'Mes', 'monto': 'Monto ($)'},
+            line_shape="spline", # Curvas suaves
+            markers=True
         )
-        fig_area.update_traces(fillcolor="rgba(26, 115, 232, 0.2)", line_color="#1A73E8")
+        fig_area.update_layout(xaxis_title="Línea de Tiempo", yaxis_title="Volumen de Gasto ($)")
         st.plotly_chart(fig_area, use_container_width=True)
 
-        # 3. TABLA DE DETALLE (Pivot)
+        # 4. TABLA RESUMEN (PIVOT)
         st.markdown("---")
-        st.write("**Resumen Numérico Mensual**")
-        pivot_mes = resumen_temporal.pivot(index='mes_año', columns='responsable', values='monto').fillna(0)
-        pivot_mes['Total Mensual'] = pivot_mes.sum(axis=1)
-        st.dataframe(pivot_mes.style.format("${:,.0f}"), use_container_width=True)
+        st.write("**Detalle Numérico Mensual**")
+        tabla_pivot = resumen_mensual.pivot(index='mes_año', columns='responsable', values='monto').fillna(0)
+        # Añadir fila de totales por persona (opcional)
+        tabla_pivot.loc['TOTAL'] = tabla_pivot.sum()
+        st.dataframe(tabla_pivot.style.format("${:,.0f}"), use_container_width=True)
         
     else:
-        st.info("Registra datos para ver el análisis temporal.")
+        st.info("No hay datos suficientes para generar el análisis temporal. Por favor, registra algunos gastos primero.")
 st.sidebar.success("Conectado a Supabase")
