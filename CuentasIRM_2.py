@@ -135,7 +135,7 @@ with tab2:
             df_sum_c = df_f.groupby('concepto')['monto'].sum().reset_index()
             tot = df_sum_c['monto'].sum()
             porcentajes = [f"{(v/tot)*100:.1f}%" for v in df_sum_c['monto']]
-            textos = [f"${v:,.0f} ({p})" for v in zip(df_sum_c['monto'], porcentajes)]
+            textos = [f"${monto:,.0f} ({p})" for monto, p in zip(df_sum_c['monto'], porcentajes)]
             fig1 = px.pie(
                 df_sum_c,
                 values='monto',
