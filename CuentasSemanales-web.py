@@ -134,51 +134,81 @@ with tab2:
 # --- PESTAÑA 3: ANÁLISIS Y PRONÓSTICO ---
 with tab3:
     if not df.empty:
-        st.subheader("📅 Evolución Mensual y Proyecciones")
+        st.subheader("📅 Análisis de Participación y Proyecciones")
         
-        # Preparación de datos temporales
-        df_temp = df.copy().sort_values('fecha')
+        # 1. Preparación de datos
+        df_temp = df.copy()
+        df_temp['monto'] = pd.to_numeric(df_temp['monto'], errors='coerce').fillna(0).astype(float)
+        df_temp['fecha'] = pd.to_datetime(df_temp['fecha'])
+        df_temp = df_temp.sort_values('fecha')
         df_temp['mes_año'] = df_temp['fecha'].dt.strftime('%Y-%m')
+
+        # --- SECCIÓN NUEVA: TABLA DE TOTALES POR PAGADOR ---
+        st.write("### 💰 Resumen de Totales por Responsable")
+        # Agrupamos por responsable y sumamos
+        total_historico = df_temp.groupby('responsable')['monto'].sum().reset_index()
+        # Calculamos el porcentaje real para la tabla
+        suma_total_general = total_historico['monto'].sum()
+        total_historico['% Participación'] = (total_historico['monto'] / suma_total_general) * 100
         
-        # Agrupaciones matemáticas
-        resumen_mensual = df_temp.groupby(['mes_año', 'responsable'])['monto'].sum().reset_index()
-        total_por_mes = df_temp.groupby('mes_año')['monto'].sum().reset_index()
+        # Mostramos la tabla con formato de moneda y porcentaje
+        st.table(total_historico.style.format({
+            "monto": "${:,.0f}",
+            "% Participación": "{:.2f}%"
+        }))
+
+        st.markdown("---")
+
+        # 2. Gráficos de Participación (Corregido para evitar el 33%)
+        col_an1, col_an2 = st.columns(2)
         
-        # 1. Gráfico de Torta de Participación Real (SUMA)
-        st.write("**Distribución del Gasto Histórico Total**")
-        total_hist = df_temp.groupby('responsable')['monto'].sum().reset_index()
-        fig_pie_h = px.pie(total_hist, values='monto', names='responsable', hole=0.5)
-        fig_pie_h.update_traces(textinfo='percent+value', texttemplate='%{percent}<br>$%{value:,.0f}')
-        st.plotly_chart(fig_pie_h, use_container_width=True)
+        with col_an1:
+            st.write("**Proporción del Gasto Total (Torta)**")
+            fig_pie_h = px.pie(
+                total_historico, 
+                values='monto', 
+                names='responsable', 
+                hole=0.5,
+                color_discrete_sequence=px.colors.qualitative.Safe
+            )
+            fig_pie_h.update_traces(textinfo='percent+value', texttemplate='%{percent}<br>$%{value:,.0f}')
+            st.plotly_chart(fig_pie_h, use_container_width=True)
+
+        with col_an2:
+            st.write("**Detalle Mensual por Responsable**")
+            res_mes = df_temp.groupby(['mes_año', 'responsable'])['monto'].sum().reset_index()
+            pivot = res_mes.pivot(index='mes_año', columns='responsable', values='monto').fillna(0)
+            pivot['Total Mes'] = pivot.sum(axis=1)
+            st.dataframe(pivot.style.format("${:,.0f}"), use_container_width=True)
 
         st.markdown("---")
         
-        # 2. Lógica de Pronóstico
+        # 3. Lógica de Pronóstico
+        st.subheader("🔮 Pronóstico de Gastos")
+        total_por_mes = df_temp.groupby('mes_año')['monto'].sum().reset_index()
         promedio_mensual = total_por_mes['monto'].mean()
-        st.subheader("🔮 Pronóstico para los Próximos Meses")
-        st.write(f"Basado en el historial, el gasto promedio mensual es de: **${promedio_mensual:,.0f}**")
         
+        st.info(f"El gasto promedio mensual actual es de: **${promedio_mensual:,.0f}**")
+        
+        # Generar proyecciones
         ultima_fecha = df_temp['fecha'].max()
         proyecciones = []
         for i in range(1, 4):
-            mes_futuro = (ultima_fecha + timedelta(days=30*i)).strftime('%Y-%m')
-            proyecciones.append({'mes_año': mes_futuro, 'monto': promedio_mensual, 'Tipo': 'Pronóstico'})
+            mes_f = (ultima_fecha + pd.DateOffset(months=i)).strftime('%Y-%m')
+            proyecciones.append({'mes_año': mes_f, 'monto': promedio_mensual, 'Tipo': 'Pronóstico'})
         
         df_futuro = pd.DataFrame(proyecciones)
         total_por_mes['Tipo'] = 'Histórico'
         df_final = pd.concat([total_por_mes, df_futuro])
 
-        fig_pronostico = px.bar(
+        fig_pron = px.bar(
             df_final, x='mes_año', y='monto', color='Tipo',
-            title="Historial de Gastos vs Pronóstico (Próximos 3 meses)",
-            color_discrete_map={'Histórico': '#1f77b4', 'Pronóstico': '#ff7f0e'},
-            text_auto='.2s'
+            title="Evolución Histórica vs Proyección a 3 meses",
+            text_auto='.2s',
+            color_discrete_map={'Histórico': '#1f77b4', 'Pronóstico': '#ff7f0e'}
         )
-        st.plotly_chart(fig_pronostico, use_container_width=True)
-
-        # Tabla resumen de proyecciones
-        st.table(df_futuro[['mes_año', 'monto']].style.format({"monto": "${:,.0f}"}))
+        st.plotly_chart(fig_pron, use_container_width=True)
     else:
-        st.info("Debe registrar datos para generar el análisis y pronóstico.")
+        st.info("No hay datos suficientes para realizar el análisis.")
 
 st.sidebar.success("✅ Conectado a Supabase")
