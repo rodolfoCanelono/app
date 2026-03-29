@@ -165,7 +165,7 @@ with tab2:
     else:
         st.info("Sin datos.")
 
-# --- TAB 3: CUADRE - APORTES (FILTRO Y TORTA REPARADA) ---
+# --- TAB 3: CUADRE - APORTES (Saldos con % actualizado) ---
 with tab3:
     if not df.empty:
         st.subheader("⚖️ Cuadre de Cuentas del Periodo")
@@ -186,16 +186,17 @@ with tab3:
         cuota = total_p / 2
         res_cuadre['Saldo'] = res_cuadre['monto'] - cuota
         
-        st.write(f"### Total Período Seleccionado: ${total_p:,.0f} | Cuota Ideal: ${cuota:,.0f}")
+        # Calcular porcentaje sobre el total
+        res_cuadre['Porcentaje'] = res_cuadre['monto'] / total_p * 100
         
-        # Gráfica de torta con monto + porcentaje real
-        res_cuadre['porcentaje'] = res_cuadre['monto'] / total_p * 100
-        res_cuadre['texto'] = res_cuadre.apply(
-            lambda row: f"${row['monto']:,.0f} ({row['porcentaje']:.1f}%)", axis=1
-        )
+        st.write(f"### Total Período Seleccionado: ${total_p:,.0f} | Cuota Ideal: ${cuota:,.0f}")
         
         col_g, col_t = st.columns([2, 1])
         with col_g:
+            # Gráfica de torta con monto + %
+            res_cuadre['texto'] = res_cuadre.apply(
+                lambda row: f"${row['monto']:,.0f} ({row['Porcentaje']:.1f}%)", axis=1
+            )
             fig_pie_cuadre = px.pie(
                 res_cuadre,
                 values='monto',
@@ -207,8 +208,13 @@ with tab3:
             st.plotly_chart(fig_pie_cuadre, use_container_width=True)
         
         with col_t:
+            # Mostrar tabla con Responsable, Monto, Saldo, Porcentaje
             st.write("**Saldos Calculados**")
-            st.table(res_cuadre.style.format({"monto": "${:,.0f}", "Saldo": "${:,.0f}"}))
+            st.table(
+                res_cuadre[['responsable', 'monto', 'Saldo', 'Porcentaje']].rename(
+                    columns={'responsable': 'Responsable', 'monto': 'Monto', 'Saldo': 'Saldo', 'Porcentaje': 'Porcentaje (%)'}
+                ).style.format({"Monto": "${:,.0f}", "Saldo": "${:,.0f}", "Porcentaje (%)": "{:.1f}%"} )
+            )
         
         st.markdown("---")
         st.write("### 📑 Historial Mensual")
