@@ -7,7 +7,7 @@ from supabase import create_client, Client
 from PIL import Image
 
 # =========================================================
-# 1. CONFIGURACIÓN DE PÁGINA
+# 1. CONFIGURACIÓN DE PÁGINA (DEBE SER LA PRIMERA LÍNEA)
 # =========================================================
 try:
     img_icono = Image.open("Rodolfo-Final.png")
@@ -28,7 +28,7 @@ if not url or not key:
 supabase = create_client(url, key)
 
 # =========================================================
-# 3. FUNCIONES DE CARGA Y LIMPIEZA (AHORA COMO ENTERO)
+# 3. FUNCIONES DE CARGA Y LIMPIEZA (FORZADO A ENTEROS)
 # =========================================================
 
 def cargar_lista_db(tabla, columna, respaldo):
@@ -36,31 +36,37 @@ def cargar_lista_db(tabla, columna, respaldo):
         response = supabase.table(tabla).select(columna).execute()
         lista = [r[columna] for r in response.data]
         return lista if lista else respaldo
-    except: return respaldo
+    except:
+        return respaldo
 
 def cargar_datos_db():
     try:
         response = supabase.table("gastos_hogar").select("*").execute()
         df_raw = pd.DataFrame(response.data)
         if not df_raw.empty:
-            # --- CAMBIO A ENTERO ---
-            # Convertimos a numérico, llenamos vacíos con 0 y forzamos tipo int
+            # LIMPIEZA MATEMÁTICA: Forzamos monto a entero para evitar errores de interpretación
             df_raw['monto'] = pd.to_numeric(df_raw['monto'], errors='coerce').fillna(0).astype(int)
             df_raw['fecha'] = pd.to_datetime(df_raw['fecha'])
         return df_raw
-    except: return pd.DataFrame()
+    except:
+        return pd.DataFrame()
 
 def guardar_gasto_db(fecha, concepto, monto, responsable, forma_pago):
-    # Aseguramos que el monto viaje como entero
-    nuevo = {"fecha": fecha.strftime("%Y-%m-%d"), "concepto": concepto, "monto": int(monto), 
-             "responsable": responsable, "forma_pago": forma_pago}
+    nuevo = {
+        "fecha": fecha.strftime("%Y-%m-%d"), 
+        "concepto": concepto, 
+        "monto": int(monto), 
+        "responsable": responsable, 
+        "forma_pago": forma_pago
+    }
     try:
         supabase.table("gastos_hogar").insert(nuevo).execute()
         return True
-    except: return False
+    except:
+        return False
 
 # =========================================================
-# 4. INICIALIZACIÓN
+# 4. INICIALIZACIÓN DE DATOS DINÁMICOS
 # =========================================================
 LISTA_RESPONSABLES = cargar_lista_db("responsables_gastos", "nombre", ["Rodolfo", "Irisysleyer", "Machulon"])
 LISTA_CONCEPTOS = cargar_lista_db("conceptos_gastos", "concepto", ["Comida", "Hipotecario"])
@@ -69,7 +75,7 @@ LISTA_FORMAS_PAGO = ["Efectivo", "Débito", "Crédito", "Transferencia"]
 df = cargar_datos_db()
 
 # =========================================================
-# 5. INTERFAZ (TABS)
+# 5. INTERFAZ PRINCIPAL
 # =========================================================
 st.title("📊 Gestión Financiera Pro - Rodolfo Canelón")
 st.markdown("---")
@@ -78,12 +84,12 @@ tab1, tab2, tab3, tab4 = st.tabs(["📝 Registro", "📈 Dashboard", "⚖️ Cua
 
 # --- TAB 1: REGISTRO ---
 with tab1:
+    st.subheader("Nuevo Registro de Gasto")
     with st.form("f_reg", clear_on_submit=True):
         c1, c2 = st.columns(2)
         with c1:
             con_in = st.selectbox("Concepto", LISTA_CONCEPTOS)
-            # Input configurado para enteros
-            mon_in = st.number_input("Monto (Entero)", min_value=0, step=1, format="%d")
+            mon_in = st.number_input("Monto", min_value=0, step=1, format="%d")
             pag_in = st.selectbox("Forma de Pago", LISTA_FORMAS_PAGO)
         with c2:
             fec_in = st.date_input("Fecha", datetime.now())
@@ -102,12 +108,14 @@ with tab2:
         with f3: d_qui = st.selectbox("Responsable", ["Todos"] + LISTA_RESPONSABLES, key="d3")
         with f4: d_con = st.selectbox("Concepto", ["Todos"] + LISTA_CONCEPTOS, key="d4")
 
+        # Filtrado
         mask = (df['fecha'].dt.date >= d_ini) & (df['fecha'].dt.date <= d_fin)
         if d_qui != "Todos": mask = mask & (df['responsable'] == d_qui)
         if d_con != "Todos": mask = mask & (df['concepto'] == d_con)
         df_f = df.loc[mask]
 
-        total_f = df_f['monto'].sum()
+        # Métricas 50/50
+        total_f = int(df_f['monto'].sum())
         mitad = total_f / 2
         
         ci, cr, ct = st.columns(3)
@@ -115,22 +123,27 @@ with tab2:
         with cr: st.success(f"**Rodolfo (50%)**\n\n${mitad:,.0f}")
         with ct: st.metric("Total Selección", f"${total_f:,.0f}")
 
+        # Gráficas con paso a LISTA para asegurar montos reales
         g1, g2 = st.columns(2)
         with g1:
-            df_pie_c = df_f.groupby('concepto', as_index=False)['monto'].sum()
-            fig_c = px.pie(df_pie_c, values='monto', names='concepto', hole=0.4, title="Monto por Concepto")
-            fig_c.update_traces(textinfo='value+percent', texttemplate='$%{value:,.0f}<br>%{percent}')
-            st.plotly_chart(fig_c, use_container_width=True)
+            df_sum_c = df_f.groupby('concepto')['monto'].sum().reset_index()
+            fig1 = px.pie(values=df_sum_c['monto'].tolist(), names=df_sum_c['concepto'].tolist(), 
+                          hole=0.4, title="Monto por Concepto")
+            fig1.update_traces(textinfo='value+percent', texttemplate='$%{value:,.0f}<br>%{percent}')
+            st.plotly_chart(fig1, use_container_width=True)
         with g2:
-            df_pie_r = df_f.groupby('responsable', as_index=False)['monto'].sum()
-            fig_r = px.pie(df_pie_r, values='monto', names='responsable', hole=0.4, title="Monto por Responsable")
-            fig_r.update_traces(textinfo='value+percent', texttemplate='$%{value:,.0f}<br>%{percent}')
-            st.plotly_chart(fig_r, use_container_width=True)
+            df_sum_r = df_f.groupby('responsable')['monto'].sum().reset_index()
+            fig2 = px.pie(values=df_sum_r['monto'].tolist(), names=df_sum_r['responsable'].tolist(), 
+                          hole=0.4, title="Monto por Responsable")
+            fig2.update_traces(textinfo='value+percent', texttemplate='$%{value:,.0f}<br>%{percent}')
+            st.plotly_chart(fig2, use_container_width=True)
             
+        st.subheader("📋 Detalle de Registros")
         st.dataframe(df_f.sort_values('fecha', ascending=False), use_container_width=True)
-    else: st.info("Sin datos.")
+    else:
+        st.info("Sin datos.")
 
-# --- TAB 3: CUADRE - APORTES (TORTA Y SALDOS) ---
+# --- TAB 3: CUADRE - APORTES (FILTRO Y TORTA REPARADA) ---
 with tab3:
     if not df.empty:
         st.subheader("⚖️ Cuadre de Cuentas del Periodo")
@@ -139,45 +152,48 @@ with tab3:
         with cf2: c_fin = st.date_input("Fin Cuadre", df['fecha'].max().date(), key="c2")
         
         df_c = df[(df['fecha'].dt.date >= c_ini) & (df['fecha'].dt.date <= c_fin)]
-        resumen_cuadre = df_c.groupby('responsable', as_index=False)['monto'].sum()
-        total_p = resumen_cuadre['monto'].sum()
+        res_cuadre = df_c.groupby('responsable')['monto'].sum().reset_index()
+        total_p = int(res_cuadre['monto'].sum())
         cuota = total_p / 2
-        resumen_cuadre['Diferencia (Saldo)'] = resumen_cuadre['monto'] - cuota
+        res_cuadre['Saldo'] = res_cuadre['monto'] - cuota
         
-        st.write(f"### Total Periodo: ${total_p:,.0f} | Cuota Ideal 50/50: ${cuota:,.0f}")
+        st.write(f"### Total Periodo: ${total_p:,.0f} | Cuota Ideal: ${cuota:,.0f}")
         
-        cg1, cg2 = st.columns([2, 1])
-        with cg1:
-            fig_pie_cuadre = px.pie(resumen_cuadre, values='monto', names='responsable', 
-                                    hole=0.5, title="Participación Real")
+        col_g, col_t = st.columns([2, 1])
+        with col_g:
+            # Gráfica de Torta con listas explícitas para evitar el 33%
+            fig_pie_cuadre = px.pie(values=res_cuadre['monto'].tolist(), names=res_cuadre['responsable'].tolist(), 
+                                    hole=0.5, title="Distribución de Aportes")
             fig_pie_cuadre.update_traces(textinfo='value+percent', texttemplate='$%{value:,.0f}<br>%{percent}')
             st.plotly_chart(fig_pie_cuadre, use_container_width=True)
-        with cg2:
-            st.write("**Saldos de Cuadre**")
-            st.table(resumen_cuadre.style.format({"monto": "${:,.0f}", "Diferencia (Saldo)": "${:,.0f}"}))
+        with col_t:
+            st.write("**Saldos Calculados**")
+            st.table(res_cuadre.style.format({"monto": "${:,.0f}", "Saldo": "${:,.0f}"}))
             
         st.markdown("---")
+        st.write("### 📑 Historial Mensual")
         df_aux = df.copy(); df_aux['mes'] = df_aux['fecha'].dt.strftime('%Y-%m')
         pivot = df_aux.groupby(['mes', 'responsable'])['monto'].sum().unstack().fillna(0)
-        st.write("### 📑 Historial Mensual")
+        pivot['Total'] = pivot.sum(axis=1)
         st.dataframe(pivot.style.format("${:,.0f}"), use_container_width=True)
-    else: st.info("Sin datos.")
+    else:
+        st.info("Sin datos.")
 
-# --- TAB 4: PRONÓSTICO ---
+# --- TAB 4: PRONÓSTICO (TOTALES MENSUALES) ---
 with tab4:
     if not df.empty:
         st.subheader("🔮 Pronóstico de Flujo")
         df_p = df.copy(); df_p['mes'] = df_p['fecha'].dt.strftime('%Y-%m')
-        gastos_mes = df_p.groupby('mes', as_index=False)['monto'].sum()
-        avg = gastos_mes['monto'].mean()
+        gastos_mes = df_p.groupby('mes')['monto'].sum().reset_index()
+        avg = int(gastos_mes['monto'].mean())
         
-        st.info(f"Promedio mensual: **${avg:,.0f}**")
+        st.info(f"Promedio mensual real: **${avg:,.0f}**")
         
-        proy = pd.DataFrame({'mes': ["Mes +1", "Mes +2", "Mes +3"], 'monto': [int(avg)]*3, 'Tipo': ['Pronóstico']*3})
+        proy = pd.DataFrame({'mes': ["Mes +1", "Mes +2", "Mes +3"], 'monto': [avg]*3, 'Tipo': ['Pronóstico']*3})
         gastos_mes['Tipo'] = 'Histórico'
         df_plot = pd.concat([gastos_mes, proy])
         
         fig_proy = px.bar(df_plot, x='mes', y='monto', color='Tipo', text_auto='.2s', title="Flujo Proyectado")
         st.plotly_chart(fig_proy, use_container_width=True)
 
-st.sidebar.success("✅ Sistema Configurado como Enteros")
+st.sidebar.success("✅ Sistema Consolidado")
