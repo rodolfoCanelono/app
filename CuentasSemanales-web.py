@@ -68,7 +68,7 @@ df = cargar_datos_db()
 st.title("📊 Sistema Integral de Gestión de Gastos")
 st.markdown("---")
 
-tab1, tab2, tab3 = st.tabs(["📝 Registro de Gastos", "📈 Dashboard Original", "🔮 Análisis y Pronóstico"])
+tab1, tab2, tab3 = st.tabs(["📝 Registro de Gastos", "📈 Dashboard ", "🔮 Análisis y Pronóstico"])
 
 # --- PESTAÑA 1: REGISTRO ---
 with tab1:
@@ -203,31 +203,29 @@ with tab3:
     
     st.plotly_chart(fig_pie_h, use_container_width=True)
         
-        # 3. Lógica de Pronóstico
-        st.subheader("🔮 Pronóstico de Gastos")
-        total_por_mes = df_temp.groupby('mes_año')['monto'].sum().reset_index()
-        promedio_mensual = total_por_mes['monto'].mean()
-        
-        st.info(f"El gasto promedio mensual actual es de: **${promedio_mensual:,.0f}**")
-        
-        # Generar proyecciones
-        ultima_fecha = df_temp['fecha'].max()
-        proyecciones = []
-        for i in range(1, 4):
+    # 3. Lógica de Pronóstico
+    st.subheader("🔮 Pronóstico de Gastos")
+    total_por_mes = df_temp.groupby('mes_año')['monto'].sum().reset_index()
+    promedio_mensual = total_por_mes['monto'].mean()
+    st.info(f"El gasto promedio mensual actual es de: **${promedio_mensual:,.0f}**")
+    
+    # Generar proyecciones
+    ultima_fecha = df_temp['fecha'].max()
+    proyecciones = []
+    for i in range(1, 4):
             mes_f = (ultima_fecha + pd.DateOffset(months=i)).strftime('%Y-%m')
             proyecciones.append({'mes_año': mes_f, 'monto': promedio_mensual, 'Tipo': 'Pronóstico'})
         
-        df_futuro = pd.DataFrame(proyecciones)
-        total_por_mes['Tipo'] = 'Histórico'
-        df_final = pd.concat([total_por_mes, df_futuro])
-
-        fig_pron = px.bar(
+    df_futuro = pd.DataFrame(proyecciones)
+    total_por_mes['Tipo'] = 'Histórico'
+    df_final = pd.concat([total_por_mes, df_futuro])
+    fig_pron = px.bar(
             df_final, x='mes_año', y='monto', color='Tipo',
             title="Evolución Histórica vs Proyección a 3 meses",
             text_auto='.2s',
             color_discrete_map={'Histórico': '#1f77b4', 'Pronóstico': '#ff7f0e'}
         )
-        st.plotly_chart(fig_pron, use_container_width=True)
+    st.plotly_chart(fig_pron, use_container_width=True)
     else:
         st.info("No hay datos suficientes para realizar el análisis.")
 
