@@ -132,4 +132,49 @@ with tab2:
 # --- PESTAÑA 3: CUADRE - APORTES (CON GRÁFICA DE BARRAS) ---
 with tab3:
     if not df.empty:
-        st.subheader("⚖️
+        st.subheader("⚖️ Cuadre de Cuentas")
+        cf1, cf2 = st.columns(2)
+        with cf1: c_ini = st.date_input("Inicio Cuadre", df['fecha'].min().date(), key="c_ini")
+        with cf2: c_fin = st.date_input("Fin Cuadre", df['fecha'].max().date(), key="c_fin")
+        
+        df_c = df[(df['fecha'].dt.date >= c_ini) & (df['fecha'].dt.date <= c_fin)]
+        resumen = df_c.groupby('responsable')['monto'].sum().reset_index()
+        total_p = resumen['monto'].sum()
+        cuota_ideal = total_p / 2
+        resumen['Diferencia (Saldo)'] = resumen['monto'] - cuota_ideal
+        
+        st.write(f"### Resumen: ${total_p:,.0f} | Cuota 50/50: ${cuota_ideal:,.0f}")
+        
+        # Nueva Gráfica de Barras de Aportes
+        fig_bar_aportes = px.bar(resumen, x='responsable', y='monto', color='responsable', 
+                                 text_auto='.2s', title="Monto Aportado por Responsable")
+        st.plotly_chart(fig_bar_aportes, use_container_width=True)
+        
+        st.table(resumen.style.format({"monto": "${:,.0f}", "Diferencia (Saldo)": "${:,.0f}"}))
+        
+        st.markdown("---")
+        st.write("### 📑 Tabla Mensual de Pagos")
+        df_aux = df.copy(); df_aux['mes'] = df_aux['fecha'].dt.strftime('%Y-%m')
+        pivot = df_aux.groupby(['mes', 'responsable'])['monto'].sum().unstack().fillna(0)
+        pivot['Total Mes'] = pivot.sum(axis=1)
+        st.dataframe(pivot.style.format("${:,.0f}"), use_container_width=True)
+    else:
+        st.info("Sin datos.")
+
+# --- PESTAÑA 4: PRONÓSTICO ---
+with tab4:
+    if not df.empty:
+        st.subheader("🔮 Proyección de Gastos")
+        df_p = df.copy(); df_p['mes'] = df_p['fecha'].dt.strftime('%Y-%m')
+        mensual = df_p.groupby('mes')['monto'].sum().reset_index()
+        avg = mensual['monto'].mean()
+        
+        st.info(f"Promedio mensual real: **${avg:,.0f}**")
+        
+        futuro = pd.DataFrame({'mes': ["Mes +1", "Mes +2", "Mes +3"], 'monto': [avg]*3, 'Tipo': ['Pronóstico']*3})
+        mensual['Tipo'] = 'Histórico'
+        df_final = pd.concat([mensual, futuro])
+        
+        st.plotly_chart(px.bar(df_final, x='mes', y='monto', color='Tipo', text_auto='.2s', title="Flujo Proyectado"), use_container_width=True)
+
+st.sidebar.success("✅ Conectado a Supabase")
