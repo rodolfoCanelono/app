@@ -38,8 +38,7 @@ def cargar_datos_db():
         response = supabase.table("gastos_hogar").select("fecha, concepto, monto, responsable, forma_pago").execute()
         df_raw = pd.DataFrame(response.data)
         if not df_raw.empty:
-            # --- CORRECCIÓN DE TIPADO CRÍTICA ---
-            # Forzamos monto a float para que Plotly pueda sumar valores y no contar filas
+            # --- CORRECCIÓN DE TIPADO CRÍTICA PARA EVITAR EL 33% ---
             df_raw['monto'] = pd.to_numeric(df_raw['monto'], errors='coerce').fillna(0).astype(float)
             df_raw['fecha'] = pd.to_datetime(df_raw['fecha'])
         return df_raw
@@ -66,14 +65,14 @@ def guardar_gasto_db(fecha, concepto, monto, responsable, forma_pago):
 df = cargar_datos_db()
 
 # --- 6. INTERFAZ DE USUARIO ---
-st.title("📊 Sistema de Gestión de Gastos e Inteligencia Financiera")
+st.title("📊 Sistema Integral de Gestión de Gastos")
 st.markdown("---")
 
 tab1, tab2, tab3 = st.tabs(["📝 Registro", "📈 Dashboard Original", "🔮 Análisis y Pronóstico"])
 
 # --- PESTAÑA 1: REGISTRO ---
 with tab1:
-    st.subheader("Nuevo Registro")
+    st.subheader("Nuevo Registro de Gasto")
     with st.form("form_registro", clear_on_submit=True):
         col_reg1, col_reg2 = st.columns(2)
         with col_reg1:
@@ -82,16 +81,17 @@ with tab1:
             forma_pago_in = st.selectbox("Forma de Pago", LISTA_FORMAS_PAGO)
         with col_reg2:
             fecha_in = st.date_input("Fecha", datetime.now())
-            responsable_in = st.selectbox("¿Quién pagó?", LISTA_RESPONSABLES)
+            responsable_in = st.selectbox("¿Quién realizó el pago?", LISTA_RESPONSABLES)
         
         if st.form_submit_button("Guardar Gasto"):
             if guardar_gasto_db(fecha_in, concepto_in, monto_in, responsable_in, forma_pago_in):
-                st.success("✅ Gasto guardado.")
+                st.success("✅ Gasto guardado correctamente.")
                 st.rerun()
 
 # --- PESTAÑA 2: DASHBOARD ORIGINAL ---
 with tab2:
     if not df.empty:
+        st.subheader("🔍 Filtros y Resumen de Cuentas")
         c_f1, c_f2, c_f3 = st.columns(3)
         with c_f1: inicio = st.date_input("Desde", df['fecha'].min().date(), key="d_ini")
         with c_f2: fin = st.date_input("Hasta", df['fecha'].max().date(), key="d_fin")
@@ -101,57 +101,73 @@ with tab2:
         if quien != "Todos": mask = mask & (df['responsable'] == quien)
         df_f = df.loc[mask]
 
+        # --- FUNCIONES CONSAGRADAS: DIVISIÓN DE GASTOS ---
         total_f = df_f['monto'].sum()
-        st.write(f"### Total Filtrado: ${total_f:,.0f}")
+        mitad = total_f / 2
         
-        col_g1, col_g2 = st.columns(2)
-        with col_g1:
-            # Agrupación explícita para asegurar SUMA
+        st.write("⚖️ **División de Gastos (Total / 2)**")
+        c_i, c_r, c_t = st.columns(3)
+        with c_i: st.info(f"**Irisysleyer**\n\n${mitad:,.0f}")
+        with c_r: st.success(f"**Rodolfo**\n\n${mitad:,.0f}")
+        with c_t: st.metric("Total General", f"${total_f:,.0f}")
+
+        # Gráficos de Torta Corregidos
+        st.markdown("---")
+        g1, g2 = st.columns(2)
+        with g1:
             df_c = df_f.groupby('concepto')['monto'].sum().reset_index()
-            fig1 = px.pie(df_c, values='monto', names='concepto', hole=0.4, title="Gasto por Concepto")
+            fig1 = px.pie(df_c, values='monto', names='concepto', hole=0.4, title="Por Concepto")
             fig1.update_traces(textinfo='percent+value', texttemplate='%{percent}<br>$%{value:,.0f}')
             st.plotly_chart(fig1, use_container_width=True)
-        with col_g2:
+        with g2:
             df_r = df_f.groupby('responsable')['monto'].sum().reset_index()
-            fig2 = px.pie(df_r, values='monto', names='responsable', hole=0.4, title="Gasto por Responsable")
+            fig2 = px.pie(df_r, values='monto', names='responsable', hole=0.4, title="Por Responsable")
             fig2.update_traces(textinfo='percent+value', texttemplate='%{percent}<br>$%{value:,.0f}')
             st.plotly_chart(fig2, use_container_width=True)
+
+        st.write("📋 **Historial Detallado**")
+        df_display = df_f.copy().sort_values('fecha', ascending=False)
+        df_display['fecha'] = df_display['fecha'].dt.strftime('%d/%m/%Y')
+        st.dataframe(df_display, use_container_width=True)
     else:
-        st.info("No hay datos.")
+        st.info("No hay datos registrados aún.")
 
 # --- PESTAÑA 3: ANÁLISIS Y PRONÓSTICO ---
 with tab3:
     if not df.empty:
-        # 1. Preparación de datos
-        df_temp = df.copy()
-        df_temp = df_temp.sort_values('fecha')
+        st.subheader("📅 Análisis de Participación y Proyecciones")
+        
+        df_temp = df.copy().sort_values('fecha')
         df_temp['mes_año'] = df_temp['fecha'].dt.strftime('%Y-%m')
 
-        # --- TABLA DE TOTALES POR RESPONSABLE (Calculada matemáticamente) ---
-        st.subheader("💰 Resumen Histórico por Pagador")
+        # --- TABLA DE TOTALES POR PAGADOR ---
+        st.write("### 💰 Resumen de Totales por Responsable")
         total_historico = df_temp.groupby('responsable')['monto'].sum().reset_index()
-        suma_total = total_historico['monto'].sum()
-        total_historico['% Real'] = (total_historico['monto'] / suma_total) * 100
+        suma_total_general = total_historico['monto'].sum()
+        total_historico['% Participación'] = (total_historico['monto'] / suma_total_general) * 100
         
-        st.table(total_historico.style.format({"monto": "${:,.0f}", "% Real": "{:.2f}%"}))
+        st.table(total_historico.style.format({"monto": "${:,.0f}", "% Participación": "{:.2f}%"}))
 
+        st.markdown("---")
         col_an1, col_an2 = st.columns(2)
+        
         with col_an1:
-            st.write("**Proporción Real del Gasto (Torta)**")
-            # --- FIX DEFINITIVO: Usamos 'monto' (la suma) para evitar el 33% ---
+            st.write("**Proporción Real del Gasto Total (Torta)**")
+            # --- FIX DEFINITIVO: Usamos 'monto' (la suma real) para evitar el 33% ---
             fig_pie_h = px.pie(total_historico, values='monto', names='responsable', hole=0.5)
             fig_pie_h.update_traces(textinfo='percent+value', texttemplate='%{percent}<br>$%{value:,.0f}')
             st.plotly_chart(fig_pie_h, use_container_width=True)
 
         with col_an2:
-            st.write("**Detalle Mensual ($)**")
+            st.write("**Detalle Mensual por Responsable ($)**")
             res_mes = df_temp.groupby(['mes_año', 'responsable'])['monto'].sum().reset_index()
             pivot = res_mes.pivot(index='mes_año', columns='responsable', values='monto').fillna(0)
+            pivot['Total Mes'] = pivot.sum(axis=1)
             st.dataframe(pivot.style.format("${:,.0f}"), use_container_width=True)
 
         st.markdown("---")
         
-        # 2. PRONÓSTICO
+        # --- PRONÓSTICO ---
         st.subheader("🔮 Pronóstico de Gastos")
         total_por_mes = df_temp.groupby('mes_año')['monto'].sum().reset_index()
         promedio_mensual = total_por_mes['monto'].mean()
@@ -168,9 +184,11 @@ with tab3:
         total_por_mes['Tipo'] = 'Histórico'
         df_final = pd.concat([total_por_mes, df_futuro])
 
-        fig_pron = px.bar(df_final, x='mes_año', y='monto', color='Tipo', title="Historial vs Proyección (3 Meses)", text_auto='.2s')
+        fig_pron = px.bar(df_final, x='mes_año', y='monto', color='Tipo', 
+                         title="Evolución Histórica vs Proyección (Próximos 3 meses)", 
+                         text_auto='.2s', color_discrete_map={'Histórico': '#1f77b4', 'Pronóstico': '#ff7f0e'})
         st.plotly_chart(fig_pron, use_container_width=True)
     else:
-        st.info("Sin datos suficientes.")
+        st.info("Debe registrar datos para generar el análisis.")
 
 st.sidebar.success("✅ Conectado a Supabase")
