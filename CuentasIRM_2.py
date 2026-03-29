@@ -169,25 +169,33 @@ with tab2:
 with tab3:
     if not df.empty:
         st.subheader("⚖️ Cuadre de Cuentas del Periodo")
-        cf1, cf2 = st.columns(2)
-        with cf1: c_ini = st.date_input("Inicio Cuadre", df['fecha'].min().date(), key="c1")
-        with cf2: c_fin = st.date_input("Fin Cuadre", df['fecha'].max().date(), key="c2")
         
+        # Filtros de fechas
+        cf1, cf2 = st.columns(2)
+        with cf1:
+            c_ini = st.date_input("Inicio Cuadre", df['fecha'].min().date(), key="c1")
+        with cf2:
+            c_fin = st.date_input("Fin Cuadre", df['fecha'].max().date(), key="c2")
+        
+        # Filtrar DataFrame según fechas
         df_c = df[(df['fecha'].dt.date >= c_ini) & (df['fecha'].dt.date <= c_fin)].copy()
+        
+        # Agrupar por responsable y calcular total del periodo
         res_cuadre = df_c.groupby('responsable')['monto'].sum().reset_index()
         total_p = res_cuadre['monto'].sum()
         cuota = total_p / 2
         res_cuadre['Saldo'] = res_cuadre['monto'] - cuota
-        st.write(f"Total período seleccionado: ${total_p:,.0f}")
-        st.table(res_cuadre.style.format({"monto": "${:,.0f}", "Saldo": "${:,.0f}"}))
-        st.write(f"### Total Periodo: ${total_p:,.0f} | Cuota Ideal: ${cuota:,.0f}")        
+        
+        st.write(f"### Total Período Seleccionado: ${total_p:,.0f} | Cuota Ideal: ${cuota:,.0f}")
+        
+        # Gráfica de torta con monto + porcentaje real
+        res_cuadre['porcentaje'] = res_cuadre['monto'] / total_p * 100
+        res_cuadre['texto'] = res_cuadre.apply(
+            lambda row: f"${row['monto']:,.0f} ({row['porcentaje']:.1f}%)", axis=1
+        )
+        
         col_g, col_t = st.columns([2, 1])
         with col_g:
-            # Gráfica de Torta con listas explícitas para evitar el 33%
-            res_cuadre = df_f.groupby('responsable')['monto'].sum().reset_index()
-            tot = res_cuadre['monto'].sum()
-            porcentajes = [f"{(v/tot)*100:.1f}%" for v in res_cuadre['monto']]
-            textos = [f"${monto:,.0f} ({p})" for monto, p in zip(res_cuadre['monto'], porcentajes)]
             fig_pie_cuadre = px.pie(
                 res_cuadre,
                 values='monto',
@@ -195,18 +203,21 @@ with tab3:
                 hole=0.5,
                 title="Distribución de Aportes"
             )
-            fig_pie_cuadre.update_traces(text=textos,textinfo='text')
+            fig_pie_cuadre.update_traces(text=res_cuadre['texto'], textinfo='text')
             st.plotly_chart(fig_pie_cuadre, use_container_width=True)
+        
         with col_t:
             st.write("**Saldos Calculados**")
             st.table(res_cuadre.style.format({"monto": "${:,.0f}", "Saldo": "${:,.0f}"}))
-            
+        
         st.markdown("---")
         st.write("### 📑 Historial Mensual")
-        df_aux = df.copy(); df_aux['mes'] = df_aux['fecha'].dt.strftime('%Y-%m')
+        df_aux = df_c.copy()
+        df_aux['mes'] = df_aux['fecha'].dt.strftime('%Y-%m')
         pivot = df_aux.groupby(['mes', 'responsable'])['monto'].sum().unstack().fillna(0)
         pivot['Total'] = pivot.sum(axis=1)
         st.dataframe(pivot.style.format("${:,.0f}"), use_container_width=True)
+        
     else:
         st.info("Sin datos.")
 
