@@ -76,7 +76,7 @@ with tab1:
     
         with col_reg1:
             concepto_in = st.selectbox("¿En qué gastaste?", LISTA_CONCEPTOS)
-            monto_in = st.number_input("¿Monto del Gasto?", min_value=1000, step=1000)
+            monto_in = st.number_input("¿Monto del Gasto?",min_value=1000,step=2000,format="%d")
    
         with col_reg2:
             fecha_in = st.date_input("¿Fecha del gasto?", datetime.now())
