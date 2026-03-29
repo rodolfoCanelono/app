@@ -162,17 +162,27 @@ with tab3:
         # 2. Gráficos de Participación (Corregido para evitar el 33%)
         col_an1, col_an2 = st.columns(2)
         
-        with col_an1:
-            st.write("**Proporción del Gasto Total (Torta)**")
-            fig_pie_h = px.pie(
-                total_historico, 
-                values='% Participación', 
-                names='responsable', 
-                hole=0.5,
-                color_discrete_sequence=px.colors.qualitative.Safe
-            )
-            fig_pie_h.update_traces(textinfo='percent+value', texttemplate='%{percent}<br>$%{value:,.0f}')
-            st.plotly_chart(fig_pie_h, use_container_width=True)
+    with col_an1:
+    st.write("**Proporción del Gasto Total (Torta)**")
+    
+    # Asegúrate de usar 'monto' como valor numérico
+    fig_pie_h = px.pie(
+        total_historico, 
+        values='monto',        # <--- CAMBIO CLAVE: Usa el dinero real, no el %
+        names='responsable', 
+        hole=0.5,
+        color_discrete_sequence=px.colors.qualitative.Safe
+    )
+    
+    # Plotly calculará el % automáticamente basándose en los montos
+    # %{percent} mostrará el % real
+    # %{value} mostrará el monto en pesos/dólares
+    fig_pie_h.update_traces(
+        textinfo='percent+value', 
+        texttemplate='%{percent}<br>$%{value:,.0f}' 
+    )
+    
+    st.plotly_chart(fig_pie_h, use_container_width=True)
 
         with col_an2:
             st.write("**Detalle Mensual por Responsable**")
