@@ -1,32 +1,36 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import plotly.express as px
 import os
 from supabase import create_client, Client
 from PIL import Image
 
-# --- 1. CONFIGURACIÓN DE LA PÁGINA ---
+# --- 1. CONFIGURACIÓN DE PÁGINA ---
 try:
     img_icono = Image.open("Rodolfo-Final.png")
     st.set_page_config(page_title="Gestor de Gastos - Rodolfo Canelón", page_icon=img_icono, layout="wide")
 except:
     st.set_page_config(page_title="Gestor de Gastos - Rodolfo Canelón", layout="wide")
 
-# --- 2. CONEXIÓN SUPABASE ---
-url: str = os.environ.get("SUPABASE_URL") or st.secrets.get("SUPABASE_URL", "")
-key: str = os.environ.get("SUPABASE_KEY") or st.secrets.get("SUPABASE_KEY", "")
+# --- 2. CONEXIÓN A SUPABASE ---
+url = os.environ.get("SUPABASE_URL") or st.secrets.get("SUPABASE_URL", "")
+key = os.environ.get("SUPABASE_KEY") or st.secrets.get("SUPABASE_KEY", "")
 
 if not url or not key:
-    st.error("❌ Faltan credenciales de Supabase.")
+    st.error("❌ Faltan credenciales de Supabase en los Secrets de Streamlit.")
     st.stop()
 
-supabase: Client = create_client(url, key)
+supabase = create_client(url, key)
 
-# --- 3. LISTAS ---
+# --- 3. LISTAS DE SELECCIÓN ---
 LISTA_RESPONSABLES = ["Rodolfo", "Irisysleyer", "Machulon"]
 LISTA_FORMAS_PAGO = ["Efectivo", "Débito", "Crédito"]
-LISTA_CONCEPTOS = ["Comida", "Universidad Max", "Medicinas", "Ropa Max", "Regalos", "Enseres", "Gastos Comunes", "Hipotecario", "SII - Box Bodega", "SII - Depto"]
+LISTA_CONCEPTOS = [
+    "Comida", "Universidad Max", "Medicinas", "Ropa Max", 
+    "Regalos", "Enseres", "Gastos Comunes", "Hipotecario", 
+    "SII - Box Bodega", "SII - Depto"
+]
 
 # --- 4. FUNCIONES DE BASE DE DATOS ---
 def cargar_datos_db():
@@ -34,8 +38,8 @@ def cargar_datos_db():
         response = supabase.table("gastos_hogar").select("fecha, concepto, monto, responsable, forma_pago").execute()
         df_raw = pd.DataFrame(response.data)
         if not df_raw.empty:
-            # --- CORRECCIÓN CRÍTICA: Asegurar que monto sea numérico ---
-            df_raw['monto'] = pd.to_numeric(df_raw['monto'], errors='coerce').fillna(0)
+            # CORRECCIÓN DE TIPADO: Forzamos monto a numérico para que las gráficas sumen correctamente
+            df_raw['monto'] = pd.to_numeric(df_raw['monto'], errors='coerce').fillna(0).astype(float)
             df_raw['fecha'] = pd.to_datetime(df_raw['fecha'])
         return df_raw
     except Exception as e:
@@ -43,130 +47,138 @@ def cargar_datos_db():
         return pd.DataFrame()
 
 def guardar_gasto_db(fecha, concepto, monto, responsable, forma_pago):
-    nuevo = {"fecha": fecha.strftime("%Y-%m-%d"), "concepto": concepto, "monto": float(monto), "responsable": responsable, "forma_pago": forma_pago}
+    nuevo_gasto = {
+        "fecha": fecha.strftime("%Y-%m-%d"),
+        "concepto": concepto,
+        "monto": float(monto),
+        "responsable": responsable,
+        "forma_pago": forma_pago
+    }
     try:
-        supabase.table("gastos_hogar").insert(nuevo).execute()
+        supabase.table("gastos_hogar").insert(nuevo_gasto).execute()
         return True
     except Exception as e:
-        st.error(f"Error al guardar: {e}"); return False
+        st.error(f"Error al guardar: {e}")
+        return False
 
-# --- 5. CARGA DE DATOS ---
+# --- 5. LÓGICA DE DATOS GLOBAL ---
 df = cargar_datos_db()
 
-# --- 6. INTERFAZ ---
-st.title("📊 Gestión de Gastos del Hogar")
-tab1, tab2, tab3 = st.tabs(["📝 Registrar Gastos", "📈 Dashboard Original", "📅 Análisis Temporal"])
+# --- 6. INTERFAZ DE USUARIO ---
+st.title("📊 Sistema Integral de Gestión de Gastos")
+st.markdown("---")
+
+tab1, tab2, tab3 = st.tabs(["📝 Registro de Gastos", "📈 Dashboard Original", "🔮 Análisis y Pronóstico"])
 
 # --- PESTAÑA 1: REGISTRO ---
 with tab1:
-    with st.form("form_gastos", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        with col1:
-            concepto_in = st.selectbox("Concepto", LISTA_CONCEPTOS)
-            monto_in = st.number_input("Monto", min_value=0, step=1000, format="%d")
-            forma_in = st.selectbox("Forma de Pago", LISTA_FORMAS_PAGO)
-        with col2:
+    st.subheader("Nuevo Registro de Gasto")
+    with st.form("form_registro", clear_on_submit=True):
+        col_reg1, col_reg2 = st.columns(2)
+        with col_reg1:
+            concepto_in = st.selectbox("¿En qué gastaste?", LISTA_CONCEPTOS)
+            monto_in = st.number_input("Monto del Gasto", min_value=0, step=1000, format="%d")
+            forma_pago_in = st.selectbox("Forma de Pago", LISTA_FORMAS_PAGO)
+        with col_reg2:
             fecha_in = st.date_input("Fecha", datetime.now())
-            resp_in = st.selectbox("Responsable", LISTA_RESPONSABLES)
+            responsable_in = st.selectbox("¿Quién realizó el pago?", LISTA_RESPONSABLES)
+        
         if st.form_submit_button("Guardar Gasto"):
-            if guardar_gasto_db(fecha_in, concepto_in, monto_in, resp_in, forma_in):
-                st.success("✅ Registrado"); st.rerun()
+            if guardar_gasto_db(fecha_in, concepto_in, monto_in, responsable_in, forma_pago_in):
+                st.success("✅ Gasto guardado correctamente.")
+                st.rerun()
 
 # --- PESTAÑA 2: DASHBOARD ORIGINAL ---
 with tab2:
     if not df.empty:
-        st.subheader("🔍 Filtros Rápidos")
-        c1, c2, c3 = st.columns(3)
-        with c1: ini = st.date_input("Desde", df['fecha'].min().date(), key="d_ini")
-        with c2: fin = st.date_input("Hasta", df['fecha'].max().date(), key="d_fin")
-        with c3: res = st.selectbox("Responsable", ["Todos"] + LISTA_RESPONSABLES, key="d_res")
+        st.subheader("🔍 Filtros de Visualización")
+        c_f1, c_f2, c_f3 = st.columns(3)
+        with c_f1: inicio = st.date_input("Desde", df['fecha'].min().date())
+        with c_f2: fin = st.date_input("Hasta", df['fecha'].max().date())
+        with c_f3: quien = st.selectbox("Responsable", ["Todos"] + LISTA_RESPONSABLES)
 
-        mask = (df['fecha'].dt.date >= ini) & (df['fecha'].dt.date <= fin)
-        if res != "Todos": mask = mask & (df['responsable'] == res)
+        mask = (df['fecha'].dt.date >= inicio) & (df['fecha'].dt.date <= fin)
+        if quien != "Todos": mask = mask & (df['responsable'] == quien)
         df_f = df.loc[mask]
 
+        # Métricas de División
         total_f = df_f['monto'].sum()
         mitad = total_f / 2
         
-        st.write("⚖️ **División de Gastos (Total / 2)**")
-        ci, cr, ct = st.columns(3)
-        with ci: st.info(f"**Irisysleyer**\n\n${mitad:,.0f}")
-        with cr: st.success(f"**Rodolfo**\n\n${mitad:,.0f}")
-        with ct: st.metric("Total General", f"${total_f:,.0f}")
+        st.write("⚖️ **División Equitativa (Total / 2)**")
+        c_i, c_r, c_t = st.columns(3)
+        with c_i: st.info(f"**Irisysleyer**\n\n${mitad:,.0f}")
+        with c_r: st.success(f"**Rodolfo**\n\n${mitad:,.0f}")
+        with c_t: st.metric("Total Filtrado", f"${total_f:,.0f}")
 
+        # Gráficos de Torta Corregidos
         st.markdown("---")
         g1, g2 = st.columns(2)
         with g1:
-            # Agrupar y sumar explícitamente
-            df_pie_c = df_f.groupby('concepto')['monto'].sum().reset_index()
-            fig1 = px.pie(df_pie_c, values='monto', names='concepto', title="Gasto por Concepto", hole=0.4)
+            # Agregamos los datos antes de graficar para asegurar SUMA y no CONTEO
+            df_c = df_f.groupby('concepto')['monto'].sum().reset_index()
+            fig1 = px.pie(df_c, values='monto', names='concepto', hole=0.4, title="Gasto por Concepto")
             fig1.update_traces(textinfo='percent+value', texttemplate='%{percent}<br>$%{value:,.0f}')
             st.plotly_chart(fig1, use_container_width=True)
         with g2:
-            # Agrupar y sumar explícitamente
-            df_pie_r = df_f.groupby('responsable')['monto'].sum().reset_index()
-            fig2 = px.pie(df_pie_r, values='monto', names='responsable', title="Participación por Responsable", hole=0.4)
+            df_r = df_f.groupby('responsable')['monto'].sum().reset_index()
+            fig2 = px.pie(df_r, values='monto', names='responsable', hole=0.4, title="Participación por Responsable")
             fig2.update_traces(textinfo='percent+value', texttemplate='%{percent}<br>$%{value:,.0f}')
             st.plotly_chart(fig2, use_container_width=True)
-    else:
-        st.info("No hay datos.")
 
-# --- PESTAÑA 3: ANÁLISIS TEMPORAL ---
+        st.write("📋 **Historial de Transacciones**")
+        st.dataframe(df_f.sort_values('fecha', ascending=False), use_container_width=True)
+    else:
+        st.info("No hay datos registrados aún.")
+
+# --- PESTAÑA 3: ANÁLISIS Y PRONÓSTICO ---
 with tab3:
     if not df.empty:
-        st.subheader("📅 Análisis de Participación Real (Suma de Montos)")
+        st.subheader("📅 Evolución Mensual y Proyecciones")
         
-        # 1. Asegurar limpieza de datos
-        df_temp = df.copy()
-        # Forzar monto a numérico (elimina cualquier error de formato string)
-        df_temp['monto'] = pd.to_numeric(df_temp['monto'], errors='coerce').fillna(0)
-        df_temp['fecha'] = pd.to_datetime(df_temp['fecha'])
+        # Preparación de datos temporales
+        df_temp = df.copy().sort_values('fecha')
         df_temp['mes_año'] = df_temp['fecha'].dt.strftime('%Y-%m')
         
-        # 2. AGRUPACIÓN MANUAL (Esto garantiza que la torta reciba la SUMA)
-        # Agrupamos por responsable y SUMAMOS la columna monto
-        df_participacion = df_temp.groupby('responsable')['monto'].sum().reset_index()
-
-        col_t1, col_t2 = st.columns(2)
+        # Agrupaciones matemáticas
+        resumen_mensual = df_temp.groupby(['mes_año', 'responsable'])['monto'].sum().reset_index()
+        total_por_mes = df_temp.groupby('mes_año')['monto'].sum().reset_index()
         
-        with col_t1:
-            st.write("**Distribución del Gasto Total ($)**")
-            # CRUCIAL: values='monto' toma la suma, NO el conteo de filas
-            fig_pie_real = px.pie(
-                df_participacion, 
-                values='monto', 
-                names='responsable',
-                hole=0.5,
-                color_discrete_sequence=px.colors.qualitative.Safe
-            )
-            # Mostramos porcentaje y valor real para verificar
-            fig_pie_real.update_traces(
-                textinfo='percent+value', 
-                texttemplate='%{percent}<br>$%{value:,.0f}'
-            )
-            st.plotly_chart(fig_pie_real, use_container_width=True)
+        # 1. Gráfico de Torta de Participación Real (SUMA)
+        st.write("**Distribución del Gasto Histórico Total**")
+        total_hist = df_temp.groupby('responsable')['monto'].sum().reset_index()
+        fig_pie_h = px.pie(total_hist, values='monto', names='responsable', hole=0.5)
+        fig_pie_h.update_traces(textinfo='percent+value', texttemplate='%{percent}<br>$%{value:,.0f}')
+        st.plotly_chart(fig_pie_h, use_container_width=True)
 
-        with col_t2:
-            st.write("**Resumen de Pagos por Mes**")
-            # Pivot para la tabla comparativa
-            res_mes = df_temp.groupby(['mes_año', 'responsable'])['monto'].sum().reset_index()
-            pivot = res_mes.pivot(index='mes_año', columns='responsable', values='monto').fillna(0)
-            pivot['Total Mes'] = pivot.sum(axis=1)
-            st.dataframe(pivot.style.format("${:,.0f}"), use_container_width=True)
-
-        # 3. Gráfico de Barras Apiladas
         st.markdown("---")
-        st.write("**Evolución Mensual Acumulada**")
-        fig_barras = px.bar(
-            res_mes, 
-            x='mes_año', 
-            y='monto', 
-            color='responsable',
-            barmode='stack',
+        
+        # 2. Lógica de Pronóstico
+        promedio_mensual = total_por_mes['monto'].mean()
+        st.subheader("🔮 Pronóstico para los Próximos Meses")
+        st.write(f"Basado en el historial, el gasto promedio mensual es de: **${promedio_mensual:,.0f}**")
+        
+        ultima_fecha = df_temp['fecha'].max()
+        proyecciones = []
+        for i in range(1, 4):
+            mes_futuro = (ultima_fecha + timedelta(days=30*i)).strftime('%Y-%m')
+            proyecciones.append({'mes_año': mes_futuro, 'monto': promedio_mensual, 'Tipo': 'Pronóstico'})
+        
+        df_futuro = pd.DataFrame(proyecciones)
+        total_por_mes['Tipo'] = 'Histórico'
+        df_final = pd.concat([total_por_mes, df_futuro])
+
+        fig_pronostico = px.bar(
+            df_final, x='mes_año', y='monto', color='Tipo',
+            title="Historial de Gastos vs Pronóstico (Próximos 3 meses)",
+            color_discrete_map={'Histórico': '#1f77b4', 'Pronóstico': '#ff7f0e'},
             text_auto='.2s'
         )
-        st.plotly_chart(fig_barras, use_container_width=True)
-    else:
-        st.info("No hay datos para analizar.")
+        st.plotly_chart(fig_pronostico, use_container_width=True)
 
-st.sidebar.success("Conectado a Supabase")
+        # Tabla resumen de proyecciones
+        st.table(df_futuro[['mes_año', 'monto']].style.format({"monto": "${:,.0f}"}))
+    else:
+        st.info("Debe registrar datos para generar el análisis y pronóstico.")
+
+st.sidebar.success("✅ Conectado a Supabase")
