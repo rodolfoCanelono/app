@@ -215,13 +215,21 @@ with tab4:
         st.subheader("🔮 Pronóstico de Flujo")
         df_p = df.copy(); df_p['mes'] = df_p['fecha'].dt.strftime('%Y-%m')
         gastos_mes = df_p.groupby('mes')['monto'].sum().reset_index()
-        avg = int(gastos_mes['monto'].mean())        
-        st.info(f"Promedio mensual real: **${avg:,.0f}**")
-        proy = pd.DataFrame({'mes': ["Mes +1", "Mes +2", "Mes +3"], 'monto': [avg]*3, 'Tipo': ['Pronóstico']*3})
-        gastos_mes['Tipo'] = 'Histórico'
-        textos = [f"${monto:,.0f} ({p})" for monto, p in zip(proy['monto'], porcentajes)]
-        df_plot = pd.concat([gastos_mes, proy])       
-        fig_proy = px.bar(df_plot, x='mes', y='monto', color='Tipo', text_auto='.2s', title="Flujo Proyectado")
+        df_plot = pd.concat([gastos_mes, proy], ignore_index=True)
+        # Total por tipo si quieres % sobre todo el flujo
+        total_general = df_plot['monto'].sum()
+        df_plot['porcentaje'] = df_plot['monto'] / total_general * 100
+        # Texto combinado monto + %
+        df_plot['texto'] = df_plot.apply(lambda row: f"${row['monto']:,.0f} ({row['porcentaje']:.1f}%)", axis=1)avg = int(gastos_mes['monto'].mean())        
+        fig_proy = px.bar(
+            df_plot,
+            x='mes',
+            y='monto',
+            color='Tipo',
+            text='texto',  # 🔥 aquí se aplican los valores formateados
+            title="Flujo Proyectado"
+        )
+        fig_proy.update_traces(textposition='outside')  # opcional, para mostrar fuera de la barra
         st.plotly_chart(fig_proy, use_container_width=True)
 
 st.sidebar.success("✅ Sistema Consolidado")
