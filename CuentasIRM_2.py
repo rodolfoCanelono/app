@@ -144,14 +144,16 @@ with tab2:
             )
             fig1.update_traces(text=[f"${v:,.0f}" for v in df_sum_c['monto']],textinfo='text+percent')   
             st.plotly_chart(fig1, use_container_width=True)
-            #fig1 = px.pie(df_sum_c, values='monto', names='concepto',hole=0.4, title="Monto por Concepto")
-            fig1.update_traces(textinfo='value+percent', texttemplate='$%{value:,.0f}<br>%{percent}')
-            st.plotly_chart(fig1, use_container_width=True)
         with g2:
             df_sum_r = df_f.groupby('responsable')['monto'].sum().reset_index()
-            fig2 = px.pie(values=df_sum_r['monto'].tolist(), names=df_sum_r['responsable'].tolist(), 
-                          hole=0.4, title="Monto por Responsable")
-            fig2.update_traces(textinfo='value+percent', texttemplate='$%{value:,.0f}<br>%{percent}')
+            fig2 = px.pie(
+                df_sum_r,
+                values='monto',
+                names='responsable',
+                hole=0.4,
+                title="Monto por Responsable"
+            )
+            fig2.update_traces(text=[f"${v:,.0f}" for v in df_sum_r['monto']],textinfo='text+percent')
             st.plotly_chart(fig2, use_container_width=True)
             
         st.subheader("📋 Detalle de Registros")
@@ -178,9 +180,14 @@ with tab3:
         col_g, col_t = st.columns([2, 1])
         with col_g:
             # Gráfica de Torta con listas explícitas para evitar el 33%
-            fig_pie_cuadre = px.pie(values=res_cuadre['monto'].tolist(), names=res_cuadre['responsable'].tolist(), 
-                                    hole=0.5, title="Distribución de Aportes")
-            fig_pie_cuadre.update_traces(textinfo='value+percent', texttemplate='$%{value:,.0f}<br>%{percent}')
+            fig_pie_cuadre = px.pie(
+                res_cuadre,
+                values='monto',
+                names='responsable',
+                hole=0.5,
+                title="Distribución de Aportes"
+            )
+            fig_pie_cuadre.update_traces(text=[f"${v:,.0f}" for v in res_cuadre['monto']],textinfo='text+percent')
             st.plotly_chart(fig_pie_cuadre, use_container_width=True)
         with col_t:
             st.write("**Saldos Calculados**")
