@@ -53,7 +53,7 @@ def cargar_datos_db():
 
 def guardar_gasto_db(fecha, concepto, monto, responsable, forma_pago):
     nuevo_gasto = {
-        "fecha": fecha.strftime("%d-%m-%y"), 
+        "fecha": fecha.strftime("%y-%m-%d"), 
         "concepto": concepto,
         "monto": float(monto), 
         "responsable": responsable, 
