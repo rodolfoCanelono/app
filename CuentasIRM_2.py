@@ -149,7 +149,7 @@ with tab2:
             df_sum_r = df_f.groupby('responsable')['monto'].sum().reset_index()
             tot = df_sum_r['monto'].sum()
             porcentajes = [f"{(v/tot)*100:.1f}%" for v in df_sum_r['monto']]
-            textos = [f"${monto:,.0f} ({p})" for monto, p in zip(df_sum_c['monto'], porcentajes)]
+            textos = [f"${monto:,.0f} ({p})" for monto, p in zip(df_sum_r['monto'], porcentajes)]
             fig2 = px.pie(
                 df_sum_r,
                 values='monto',
@@ -179,11 +179,14 @@ with tab3:
         cuota = total_p / 2
         res_cuadre['Saldo'] = res_cuadre['monto'] - cuota
         
-        st.write(f"### Total Periodo: ${total_p:,.0f} | Cuota Ideal: ${cuota:,.0f}")
-        
+        st.write(f"### Total Periodo: ${total_p:,.0f} | Cuota Ideal: ${cuota:,.0f}")        
         col_g, col_t = st.columns([2, 1])
         with col_g:
             # Gráfica de Torta con listas explícitas para evitar el 33%
+            res_cuadre = df_f.groupby('responsable')['monto'].sum().reset_index()
+            tot = res_cuadre['monto'].sum()
+            porcentajes = [f"{(v/tot)*100:.1f}%" for v in res_cuadre['monto']]
+            textos = [f"${monto:,.0f} ({p})" for monto, p in zip(res_cuadre['monto'], porcentajes)]
             fig_pie_cuadre = px.pie(
                 res_cuadre,
                 values='monto',
@@ -191,7 +194,7 @@ with tab3:
                 hole=0.5,
                 title="Distribución de Aportes"
             )
-            fig_pie_cuadre.update_traces(text=[f"${v:,.0f}" for v in res_cuadre['monto']],textinfo='text+percent')
+            fig2.update_traces(text=textos,textinfo='text')
             st.plotly_chart(fig_pie_cuadre, use_container_width=True)
         with col_t:
             st.write("**Saldos Calculados**")
