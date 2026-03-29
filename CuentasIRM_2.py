@@ -42,6 +42,7 @@ def cargar_datos_db():
         response = supabase.table("gastos_hogar").select("*").execute()
         df_raw = pd.DataFrame(response.data)
         if not df_raw.empty:
+            # Aseguramos tipado numérico para evitar el error del 33%
             df_raw['monto'] = pd.to_numeric(df_raw['monto'], errors='coerce').fillna(0).astype(float)
             df_raw['fecha'] = pd.to_datetime(df_raw['fecha'])
         return df_raw
@@ -88,7 +89,7 @@ with tab1:
             if guardar_gasto_db(fec_in, con_in, mon_in, res_in, pag_in):
                 st.success("✅ Gasto guardado"); st.rerun()
 
-# --- PESTAÑA 2: DASHBOARD (TODOS LOS FILTROS) ---
+# --- PESTAÑA 2: DASHBOARD (FILTROS COMPLETOS) ---
 with tab2:
     if not df.empty:
         st.subheader("🔍 Filtros Dinámicos")
@@ -114,12 +115,12 @@ with tab2:
         g1, g2 = st.columns(2)
         with g1:
             df_p_c = df_f.groupby('concepto')['monto'].sum().reset_index()
-            fig_c = px.pie(df_p_c, values='monto', names='concepto', hole=0.4, title="Por Concepto")
+            fig_c = px.pie(df_p_c, values='monto', names='concepto', hole=0.4, title="Gasto por Concepto")
             fig_c.update_traces(textinfo='percent+value', texttemplate='%{percent}<br>$%{value:,.0f}')
             st.plotly_chart(fig_c, use_container_width=True)
         with g2:
             df_p_r = df_f.groupby('responsable')['monto'].sum().reset_index()
-            fig_r = px.pie(df_p_r, values='monto', names='responsable', hole=0.4, title="Por Responsable")
+            fig_r = px.pie(df_p_r, values='monto', names='responsable', hole=0.4, title="Gasto por Responsable")
             fig_r.update_traces(textinfo='percent+value', texttemplate='%{percent}<br>$%{value:,.0f}')
             st.plotly_chart(fig_r, use_container_width=True)
 
@@ -129,7 +130,7 @@ with tab2:
     else:
         st.info("Sin datos.")
 
-# --- PESTAÑA 3: CUADRE - APORTES (CON GRÁFICA DE BARRAS) ---
+# --- PESTAÑA 3: CUADRE - APORTES (NUEVA GRÁFICA DE TORTA) ---
 with tab3:
     if not df.empty:
         st.subheader("⚖️ Cuadre de Cuentas")
@@ -143,17 +144,22 @@ with tab3:
         cuota_ideal = total_p / 2
         resumen['Diferencia (Saldo)'] = resumen['monto'] - cuota_ideal
         
-        st.write(f"### Resumen: ${total_p:,.0f} | Cuota 50/50: ${cuota_ideal:,.0f}")
+        st.write(f"### Resumen: ${total_p:,.0f} | Cuota Ideal 50/50: ${cuota_ideal:,.0f}")
         
-        # Nueva Gráfica de Barras de Aportes
-        fig_bar_aportes = px.bar(resumen, x='responsable', y='monto', color='responsable', 
-                                 text_auto='.2s', title="Monto Aportado por Responsable")
-        st.plotly_chart(fig_bar_aportes, use_container_width=True)
+        # --- NUEVA GRÁFICA DE TORTA PARA CUADRE ---
+        col_g_c1, col_g_c2 = st.columns([2, 1])
+        with col_g_c1:
+            fig_pie_cuadre = px.pie(resumen, values='monto', names='responsable', 
+                                    hole=0.5, title="Distribución de Aportes en el Periodo")
+            fig_pie_cuadre.update_traces(textinfo='percent+value', texttemplate='%{percent}<br>$%{value:,.0f}')
+            st.plotly_chart(fig_pie_cuadre, use_container_width=True)
         
-        st.table(resumen.style.format({"monto": "${:,.0f}", "Diferencia (Saldo)": "${:,.0f}"}))
+        with col_g_c2:
+            st.write("**Resumen de Saldos**")
+            st.table(resumen.style.format({"monto": "${:,.0f}", "Diferencia (Saldo)": "${:,.0f}"}))
         
         st.markdown("---")
-        st.write("### 📑 Tabla Mensual de Pagos")
+        st.write("### 📑 Historial Mensual Pivotado")
         df_aux = df.copy(); df_aux['mes'] = df_aux['fecha'].dt.strftime('%Y-%m')
         pivot = df_aux.groupby(['mes', 'responsable'])['monto'].sum().unstack().fillna(0)
         pivot['Total Mes'] = pivot.sum(axis=1)
