@@ -133,8 +133,9 @@ with tab2:
         g1, g2 = st.columns(2)
         with g1:
             df_sum_c = df_f.groupby('concepto')['monto'].sum().reset_index()
-            #fig1 = px.pie(values=df_sum_c['monto'].tolist(), names=df_sum_c['concepto'].tolist(), 
-            #              hole=0.4, title="Monto por Concepto")
+            tot = df_sum_c['monto'].sum()
+            porcentajes = [f"{(v/tot)*100:.1f}%" for v in df_sum_c['monto']]
+            textos = [f"${v:,.0f} ({p})" for v in zip(df_sum_c['monto'], porcentajes)]
             fig1 = px.pie(
                 df_sum_c,
                 values='monto',
@@ -142,7 +143,7 @@ with tab2:
                 hole=0.4,
                 title="Monto por Concepto"
             )
-            fig1.update_traces(text=[f"${v:,.0f}" for v in df_sum_c['monto']],textinfo='text+percent')   
+            fig1.update_traces(text=textos,textinfo='text')
             st.plotly_chart(fig1, use_container_width=True)
         with g2:
             df_sum_r = df_f.groupby('responsable')['monto'].sum().reset_index()
