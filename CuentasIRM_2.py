@@ -7,7 +7,7 @@ from supabase import create_client, Client
 from PIL import Image
 
 # =========================================================
-# 1. CONFIGURACIÓN DE PÁGINA (DEBE SER LO PRIMERO)
+# 1. CONFIGURACIÓN DE PÁGINA (PRIMERA LÍNEA SIEMPRE)
 # =========================================================
 try:
     img_icono = Image.open("Rodolfo-Final.png")
@@ -93,7 +93,7 @@ with tab1:
             if guardar_gasto_db(fec_in, con_in, mon_in, res_in, pag_in):
                 st.success("✅ Gasto guardado"); st.rerun()
 
-# --- PESTAÑA 2: DASHBOARD (CON TODOS LOS FILTROS RESTAURADOS) ---
+# --- PESTAÑA 2: DASHBOARD ---
 with tab2:
     if not df.empty:
         st.subheader("🔍 Filtros Dinámicos")
@@ -103,13 +103,11 @@ with tab2:
         with f3: qui = st.selectbox("Responsable", ["Todos"] + LISTA_RESPONSABLES, key="dash_qui")
         with f4: con = st.selectbox("Concepto", ["Todos"] + LISTA_CONCEPTOS, key="dash_con")
 
-        # Aplicación de filtros combinados
         mask = (df['fecha'].dt.date >= ini) & (df['fecha'].dt.date <= fin)
         if qui != "Todos": mask = mask & (df['responsable'] == qui)
         if con != "Todos": mask = mask & (df['concepto'] == con)
         df_f = df.loc[mask]
 
-        # Métricas de División
         total_f = df_f['monto'].sum()
         mitad = total_f / 2
         
@@ -118,7 +116,6 @@ with tab2:
         with c_r: st.success(f"**Rodolfo (50%)**\n\n${mitad:,.0f}")
         with c_t: st.metric("Total Seleccionado", f"${total_f:,.0f}")
 
-        # Gráficas basadas en el filtro
         g1, g2 = st.columns(2)
         with g1:
             df_pie_c = df_f.groupby('concepto')['monto'].sum().reset_index()
@@ -147,8 +144,39 @@ with tab3:
         
         df_c = df[(df['fecha'].dt.date >= c_ini) & (df['fecha'].dt.date <= c_fin)]
         
-        # Resumen de Aportes
         resumen = df_c.groupby('responsable')['monto'].sum().reset_index()
         total_p = resumen['monto'].sum()
-        cuota = total_p / 2
-        resumen['Diferencia (Saldo)'] = resumen['monto'] - cu
+        cuota_ideal = total_p / 2 # Cuota equitativa
+        
+        # Aquí corregimos el error NameError:
+        resumen['Diferencia (Saldo)'] = resumen['monto'] - cuota_ideal
+        
+        st.write(f"### Total Periodo: ${total_p:,.0f} | Cuota Ideal: ${cuota_ideal:,.0f}")
+        st.table(resumen.style.format({"monto": "${:,.0f}", "Diferencia (Saldo)": "${:,.0f}"}))
+        
+        st.markdown("---")
+        st.write("### 📑 Tabla Mensual de Pagos")
+        df_aux = df.copy(); df_aux['mes'] = df_aux['fecha'].dt.strftime('%Y-%m')
+        pivot = df_aux.groupby(['mes', 'responsable'])['monto'].sum().unstack().fillna(0)
+        pivot['Total Mes'] = pivot.sum(axis=1)
+        st.dataframe(pivot.style.format("${:,.0f}"), use_container_width=True)
+    else:
+        st.info("Sin datos.")
+
+# --- PESTAÑA 4: PRONÓSTICO ---
+with tab4:
+    if not df.empty:
+        st.subheader("🔮 Proyección de Gastos")
+        df_p = df.copy(); df_p['mes'] = df_p['fecha'].dt.strftime('%Y-%m')
+        mensual = df_p.groupby('mes')['monto'].sum().reset_index()
+        avg = mensual['monto'].mean()
+        
+        st.info(f"Promedio de gasto mensual actual: **${avg:,.0f}**")
+        
+        futuro = pd.DataFrame({'mes': ["Mes +1", "Mes +2", "Mes +3"], 'monto': [avg]*3, 'Tipo': ['Pronóstico']*3})
+        mensual['Tipo'] = 'Histórico'
+        df_final = pd.concat([mensual, futuro])
+        
+        st.plotly_chart(px.bar(df_final, x='mes', y='monto', color='Tipo', text_auto='.2s', title="Flujo Proyectado"), use_container_width=True)
+
+st.sidebar.success("✅ Conectado a Supabase")
