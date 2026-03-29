@@ -50,7 +50,6 @@ def cargar_datos_db():
                 .astype(str)
                 .str.replace(',', '', regex=False)   # 🔥 QUITA COMAS DE MILES
             )
-            st.write(df_raw[['monto']].head(10))
             df_raw['monto'] = pd.to_numeric(df_raw['monto'], errors='coerce').fillna(0)
             #df_raw['monto'] = pd.to_numeric(df_raw['monto'], errors='coerce').fillna(0).astype(int)
             df_raw['fecha'] = pd.to_datetime(df_raw['fecha'])
@@ -136,7 +135,9 @@ with tab2:
             df_sum_c = df_f.groupby('concepto')['monto'].sum().reset_index()
             #fig1 = px.pie(values=df_sum_c['monto'].tolist(), names=df_sum_c['concepto'].tolist(), 
             #              hole=0.4, title="Monto por Concepto")
-            fig1 = px.pie(df_sum_c, values='monto', names='concepto',hole=0.4, title="Monto por Concepto")
+            fig1 = px.pie(df_sum_c, values='monto', names='concepto')
+            st.plotly_chart(fig1)
+            #fig1 = px.pie(df_sum_c, values='monto', names='concepto',hole=0.4, title="Monto por Concepto")
             fig1.update_traces(textinfo='value+percent', texttemplate='$%{value:,.0f}<br>%{percent}')
             st.plotly_chart(fig1, use_container_width=True)
         with g2:
