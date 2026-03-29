@@ -213,23 +213,45 @@ with tab3:
 with tab4:
     if not df.empty:
         st.subheader("🔮 Pronóstico de Flujo")
-        df_p = df.copy(); df_p['mes'] = df_p['fecha'].dt.strftime('%Y-%m')
+        
+        # Preparar datos históricos por mes
+        df_p = df.copy()
+        df_p['mes'] = df_p['fecha'].dt.strftime('%Y-%m')
         gastos_mes = df_p.groupby('mes')['monto'].sum().reset_index()
+        gastos_mes['Tipo'] = 'Histórico'
+        
+        # Promedio mensual para pronóstico
+        avg = int(gastos_mes['monto'].mean())
+        st.info(f"Promedio mensual real: **${avg:,.0f}**")
+        
+        # Crear proyección de los próximos 3 meses
+        proy = pd.DataFrame({
+            'mes': ["Mes +1", "Mes +2", "Mes +3"],
+            'monto': [avg]*3,
+            'Tipo': ['Pronóstico']*3
+        })
+        
+        # Unir histórico + pronóstico
         df_plot = pd.concat([gastos_mes, proy], ignore_index=True)
-        # Total por tipo si quieres % sobre todo el flujo
+        
+        # Calcular porcentaje sobre el total general
         total_general = df_plot['monto'].sum()
         df_plot['porcentaje'] = df_plot['monto'] / total_general * 100
-        # Texto combinado monto + %
-        df_plot['texto'] = df_plot.apply(lambda row: f"${row['monto']:,.0f} ({row['porcentaje']:.1f}%)", axis=1)avg = int(gastos_mes['monto'].mean())        
+        
+        # Texto combinado monto + porcentaje
+        df_plot['texto'] = df_plot.apply(
+            lambda row: f"${row['monto']:,.0f} ({row['porcentaje']:.1f}%)", axis=1
+        )
+        
+        # Crear gráfico de barras con texto formateado
         fig_proy = px.bar(
             df_plot,
             x='mes',
             y='monto',
             color='Tipo',
-            text='texto',  # 🔥 aquí se aplican los valores formateados
+            text='texto',
             title="Flujo Proyectado"
         )
-        fig_proy.update_traces(textposition='outside')  # opcional, para mostrar fuera de la barra
+        fig_proy.update_traces(textposition='outside')  # muestra el texto fuera de la barra
         st.plotly_chart(fig_proy, use_container_width=True)
-
 st.sidebar.success("✅ Sistema Consolidado")
