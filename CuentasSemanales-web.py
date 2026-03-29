@@ -166,7 +166,7 @@ with tab3:
             st.write("**Proporción del Gasto Total (Torta)**")
             fig_pie_h = px.pie(
                 total_historico, 
-                values='monto', 
+                values='% Participación', 
                 names='responsable', 
                 hole=0.5,
                 color_discrete_sequence=px.colors.qualitative.Safe
