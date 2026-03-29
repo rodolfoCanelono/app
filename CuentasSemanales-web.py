@@ -25,7 +25,7 @@ supabase = create_client(url, key)
 
 # --- 3. LISTAS DE SELECCIÓN ---
 LISTA_RESPONSABLES = ["Rodolfo", "Irisysleyer", "Machulon"]
-LISTA_FORMAS_PAGO = ["Efectivo", "Débito", "Crédito"]
+LISTA_FORMAS_PAGO = ["Efectivo", "Débito", "Crédito","Transferencia"]
 LISTA_CONCEPTOS = [
     "Comida", "Universidad Max", "Medicinas", "Ropa Max", 
     "Regalos", "Enseres", "Gastos Comunes", "Hipotecario", 
@@ -68,7 +68,7 @@ df = cargar_datos_db()
 st.title("📊 Gestión de Gastos e Inteligencia Financiera")
 st.markdown("---")
 
-tab1, tab2, tab3 = st.tabs(["📝 Registro", "📈 Dashboard Original", "🔮 Análisis y Pronóstico"])
+tab1, tab2, tab3 = st.tabs(["📝 Registro", "📈 Dashboard l", "🔮 Análisis y Pronóstico"])
 
 # --- PESTAÑA 1: REGISTRO ---
 with tab1:
@@ -77,7 +77,7 @@ with tab1:
         col_reg1, col_reg2 = st.columns(2)
         with col_reg1:
             concepto_in = st.selectbox("¿En qué gastaste?", LISTA_CONCEPTOS)
-            monto_in = st.number_input("Monto del Gasto", min_value=0, step=1000, format="%d")
+            monto_in = st.number_input("Monto del Gasto", min_value=2000, step=2000, format="%d")
             forma_pago_in = st.selectbox("Forma de Pago", LISTA_FORMAS_PAGO)
         with col_reg2:
             fecha_in = st.date_input("Fecha", datetime.now())
