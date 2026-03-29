@@ -215,14 +215,12 @@ with tab4:
         st.subheader("🔮 Pronóstico de Flujo")
         df_p = df.copy(); df_p['mes'] = df_p['fecha'].dt.strftime('%Y-%m')
         gastos_mes = df_p.groupby('mes')['monto'].sum().reset_index()
-        avg = int(gastos_mes['monto'].mean())
-        
+        avg = int(gastos_mes['monto'].mean())        
         st.info(f"Promedio mensual real: **${avg:,.0f}**")
-        
         proy = pd.DataFrame({'mes': ["Mes +1", "Mes +2", "Mes +3"], 'monto': [avg]*3, 'Tipo': ['Pronóstico']*3})
         gastos_mes['Tipo'] = 'Histórico'
-        df_plot = pd.concat([gastos_mes, proy])
-        
+        textos = [f"${monto:,.0f} ({p})" for monto, p in zip(proy['monto'], porcentajes)]
+        df_plot = pd.concat([gastos_mes, proy])       
         fig_proy = px.bar(df_plot, x='mes', y='monto', color='Tipo', text_auto='.2s', title="Flujo Proyectado")
         st.plotly_chart(fig_proy, use_container_width=True)
 
