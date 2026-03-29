@@ -7,7 +7,7 @@ from supabase import create_client, Client
 from PIL import Image
 
 # =========================================================
-# 1. CONFIGURACIÓN DE PÁGINA (PRIMERA LÍNEA SIEMPRE)
+# 1. CONFIGURACIÓN DE PÁGINA (PRIMERA LÍNEA)
 # =========================================================
 try:
     img_icono = Image.open("Rodolfo-Final.png")
@@ -28,16 +28,14 @@ if not url or not key:
 supabase = create_client(url, key)
 
 # =========================================================
-# 3. FUNCIONES DE CARGA DINÁMICA
+# 3. FUNCIONES DE CARGA Y GUARDADO
 # =========================================================
 
 def cargar_lista_db(tabla, columna, respaldo):
     try:
         response = supabase.table(tabla).select(columna).execute()
-        lista = [r[columna] for r in response.data]
-        return lista if lista else respaldo
-    except:
-        return respaldo
+        return [r[columna] for r in response.data] if response.data else respaldo
+    except: return respaldo
 
 def cargar_datos_db():
     try:
@@ -47,9 +45,7 @@ def cargar_datos_db():
             df_raw['monto'] = pd.to_numeric(df_raw['monto'], errors='coerce').fillna(0).astype(float)
             df_raw['fecha'] = pd.to_datetime(df_raw['fecha'])
         return df_raw
-    except Exception as e:
-        st.error(f"Error al cargar datos: {e}")
-        return pd.DataFrame()
+    except: return pd.DataFrame()
 
 def guardar_gasto_db(fecha, concepto, monto, responsable, forma_pago):
     nuevo = {"fecha": fecha.strftime("%Y-%m-%d"), "concepto": concepto, "monto": float(monto), 
@@ -57,11 +53,10 @@ def guardar_gasto_db(fecha, concepto, monto, responsable, forma_pago):
     try:
         supabase.table("gastos_hogar").insert(nuevo).execute()
         return True
-    except:
-        return False
+    except: return False
 
 # =========================================================
-# 4. INICIALIZACIÓN DE DATOS
+# 4. INICIALIZACIÓN
 # =========================================================
 LISTA_RESPONSABLES = cargar_lista_db("responsables_gastos", "nombre", ["Rodolfo", "Irisysleyer"])
 LISTA_CONCEPTOS = cargar_lista_db("conceptos_gastos", "concepto", ["Comida", "Hipotecario"])
@@ -93,7 +88,7 @@ with tab1:
             if guardar_gasto_db(fec_in, con_in, mon_in, res_in, pag_in):
                 st.success("✅ Gasto guardado"); st.rerun()
 
-# --- PESTAÑA 2: DASHBOARD ---
+# --- PESTAÑA 2: DASHBOARD (TODOS LOS FILTROS) ---
 with tab2:
     if not df.empty:
         st.subheader("🔍 Filtros Dinámicos")
@@ -118,13 +113,13 @@ with tab2:
 
         g1, g2 = st.columns(2)
         with g1:
-            df_pie_c = df_f.groupby('concepto')['monto'].sum().reset_index()
-            fig_c = px.pie(df_pie_c, values='monto', names='concepto', hole=0.4, title="Por Concepto")
+            df_p_c = df_f.groupby('concepto')['monto'].sum().reset_index()
+            fig_c = px.pie(df_p_c, values='monto', names='concepto', hole=0.4, title="Por Concepto")
             fig_c.update_traces(textinfo='percent+value', texttemplate='%{percent}<br>$%{value:,.0f}')
             st.plotly_chart(fig_c, use_container_width=True)
         with g2:
-            df_pie_r = df_f.groupby('responsable')['monto'].sum().reset_index()
-            fig_r = px.pie(df_pie_r, values='monto', names='responsable', hole=0.4, title="Por Responsable")
+            df_p_r = df_f.groupby('responsable')['monto'].sum().reset_index()
+            fig_r = px.pie(df_p_r, values='monto', names='responsable', hole=0.4, title="Por Responsable")
             fig_r.update_traces(textinfo='percent+value', texttemplate='%{percent}<br>$%{value:,.0f}')
             st.plotly_chart(fig_r, use_container_width=True)
 
@@ -134,49 +129,7 @@ with tab2:
     else:
         st.info("Sin datos.")
 
-# --- PESTAÑA 3: CUADRE - APORTES ---
+# --- PESTAÑA 3: CUADRE - APORTES (CON GRÁFICA DE BARRAS) ---
 with tab3:
     if not df.empty:
-        st.subheader("⚖️ Cuadre de Cuentas")
-        cf1, cf2 = st.columns(2)
-        with cf1: c_ini = st.date_input("Inicio Cuadre", df['fecha'].min().date(), key="c_ini")
-        with cf2: c_fin = st.date_input("Fin Cuadre", df['fecha'].max().date(), key="c_fin")
-        
-        df_c = df[(df['fecha'].dt.date >= c_ini) & (df['fecha'].dt.date <= c_fin)]
-        
-        resumen = df_c.groupby('responsable')['monto'].sum().reset_index()
-        total_p = resumen['monto'].sum()
-        cuota_ideal = total_p / 2 # Cuota equitativa
-        
-        # Aquí corregimos el error NameError:
-        resumen['Diferencia (Saldo)'] = resumen['monto'] - cuota_ideal
-        
-        st.write(f"### Total Periodo: ${total_p:,.0f} | Cuota Ideal: ${cuota_ideal:,.0f}")
-        st.table(resumen.style.format({"monto": "${:,.0f}", "Diferencia (Saldo)": "${:,.0f}"}))
-        
-        st.markdown("---")
-        st.write("### 📑 Tabla Mensual de Pagos")
-        df_aux = df.copy(); df_aux['mes'] = df_aux['fecha'].dt.strftime('%Y-%m')
-        pivot = df_aux.groupby(['mes', 'responsable'])['monto'].sum().unstack().fillna(0)
-        pivot['Total Mes'] = pivot.sum(axis=1)
-        st.dataframe(pivot.style.format("${:,.0f}"), use_container_width=True)
-    else:
-        st.info("Sin datos.")
-
-# --- PESTAÑA 4: PRONÓSTICO ---
-with tab4:
-    if not df.empty:
-        st.subheader("🔮 Proyección de Gastos")
-        df_p = df.copy(); df_p['mes'] = df_p['fecha'].dt.strftime('%Y-%m')
-        mensual = df_p.groupby('mes')['monto'].sum().reset_index()
-        avg = mensual['monto'].mean()
-        
-        st.info(f"Promedio de gasto mensual actual: **${avg:,.0f}**")
-        
-        futuro = pd.DataFrame({'mes': ["Mes +1", "Mes +2", "Mes +3"], 'monto': [avg]*3, 'Tipo': ['Pronóstico']*3})
-        mensual['Tipo'] = 'Histórico'
-        df_final = pd.concat([mensual, futuro])
-        
-        st.plotly_chart(px.bar(df_final, x='mes', y='monto', color='Tipo', text_auto='.2s', title="Flujo Proyectado"), use_container_width=True)
-
-st.sidebar.success("✅ Conectado a Supabase")
+        st.subheader("⚖️
