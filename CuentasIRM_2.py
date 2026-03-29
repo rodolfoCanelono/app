@@ -137,6 +137,7 @@ with tab2:
             #              hole=0.4, title="Monto por Concepto")
             fig1 = px.pie(df_sum_c, values='monto', names='concepto')
             st.plotly_chart(fig1)
+            st.write(df_f.dtypes)
             #fig1 = px.pie(df_sum_c, values='monto', names='concepto',hole=0.4, title="Monto por Concepto")
             fig1.update_traces(textinfo='value+percent', texttemplate='$%{value:,.0f}<br>%{percent}')
             st.plotly_chart(fig1, use_container_width=True)
