@@ -109,60 +109,29 @@ with tab2:
 # --- PESTAÑA 3: ANÁLISIS TEMPORAL ---
 with tab3:
     if not df.empty:
-        st.subheader("📅 Análisis de Evolución y Participación")
-        
-        # 1. Preparación de datos
-        df_temp = df.copy()
-        df_temp['fecha'] = pd.to_datetime(df_temp['fecha'])
-        df_temp = df_temp.sort_values('fecha')
-        df_temp['mes_año'] = df_temp['fecha'].dt.strftime('%Y-%m')
-        
-        # Agrupación por mes y responsable
-        resumen_mensual = df_temp.groupby(['mes_año', 'responsable'])['monto'].sum().reset_index()
-        # Agrupación total para la torta
+        # ... (código previo de preparación de datos) ...
+
+        # Agrupación correcta: Sumar los montos por responsable
         total_por_responsable = df_temp.groupby('responsable')['monto'].sum().reset_index()
 
-        # 2. DISTRIBUCIÓN MENSUAL (Barras Apiladas)
-        st.write("**¿Cómo se distribuye el gasto cada mes?**")
-        fig_barras = px.bar(
-            resumen_mensual,
-            x='mes_año',
-            y='monto',
-            color='responsable',
-            title="Gasto Acumulado Mensual por Persona",
-            labels={'mes_año': 'Mes', 'monto': 'Total ($)', 'responsable': 'Responsable'},
-            text_auto='.2s',
-            barmode='stack', # Apila para ver el total del mes fácilmente
-            color_discrete_sequence=px.colors.qualitative.Pastel
-        )
-        fig_barras.update_layout(xaxis_title="Línea de Tiempo", yaxis_title="Monto ($)")
-        st.plotly_chart(fig_barras, use_container_width=True)
-
-        st.markdown("---")
-
-        # 3. TENDENCIA DE GASTO TOTAL (Gráfico de Torta)
         col_t1, col_t2 = st.columns([1, 1])
         
         with col_t1:
-            st.write("**Participación Total en el Periodo**")
+            st.write("**Participación Real en el Gasto Total**")
             fig_torta_total = px.pie(
-                total_por_responsable,
-                values='monto',
+                total_por_responsable, # Usar el DataFrame agrupado con la SUMA
+                values='monto',        # <--- CRUCIAL: Plotly debe usar 'monto' para el tamaño
                 names='responsable',
                 hole=0.5,
-                title="Proporción del Gasto Histórico",
+                title="Proporción del Gasto Histórico (Suma de montos)",
                 color_discrete_sequence=px.colors.qualitative.Safe
             )
-            fig_torta_total.update_traces(textinfo='percent+label')
+            # Forzar a que muestre el valor monetario y el porcentaje real
+            fig_torta_total.update_traces(textinfo='percent+value', texttemplate='%{percent}<br>$%{value:,.0f}')
             st.plotly_chart(fig_torta_total, use_container_width=True)
 
         with col_t2:
             st.write("**Resumen Numérico Mensual**")
-            # Tabla Pivotante para ver los números exactos
-            pivot_mes = resumen_mensual.pivot(index='mes_año', columns='responsable', values='monto').fillna(0)
-            pivot_mes['Total'] = pivot_mes.sum(axis=1)
+            # Este resumen ya muestra los valores correctos en tu imagen, úsalo para validar
             st.dataframe(pivot_mes.style.format("${:,.0f}"), use_container_width=True)
-            
-    else:
-        st.info("No hay datos suficientes para el análisis temporal.")
 st.sidebar.success("Conectado a Supabase")
