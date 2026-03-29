@@ -173,12 +173,13 @@ with tab3:
         with cf1: c_ini = st.date_input("Inicio Cuadre", df['fecha'].min().date(), key="c1")
         with cf2: c_fin = st.date_input("Fin Cuadre", df['fecha'].max().date(), key="c2")
         
-        df_c = df[(df['fecha'].dt.date >= c_ini) & (df['fecha'].dt.date <= c_fin)]
+        df_c = df[(df['fecha'].dt.date >= c_ini) & (df['fecha'].dt.date <= c_fin)].copy()
         res_cuadre = df_c.groupby('responsable')['monto'].sum().reset_index()
-        total_p = int(res_cuadre['monto'].sum())
+        total_p = res_cuadre['monto'].sum()
         cuota = total_p / 2
         res_cuadre['Saldo'] = res_cuadre['monto'] - cuota
-        
+        st.write(f"Total período seleccionado: ${total_p:,.0f}")
+        st.table(res_cuadre.style.format({"monto": "${:,.0f}", "Saldo": "${:,.0f}"}))
         st.write(f"### Total Periodo: ${total_p:,.0f} | Cuota Ideal: ${cuota:,.0f}")        
         col_g, col_t = st.columns([2, 1])
         with col_g:
