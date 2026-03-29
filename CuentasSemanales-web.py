@@ -68,7 +68,7 @@ df = cargar_datos_db()
 st.title("📊 Gestión de Gastos e Inteligencia Financiera")
 st.markdown("---")
 
-tab1, tab2, tab3 = st.tabs(["📝 Registro", "📈 Dashboard l", "🔮 Análisis y Pronóstico"])
+tab1, tab2, tab3 = st.tabs(["📝 Registro", "📈 Dashboard", "🔮 Análisis y Pronóstico"])
 
 # --- PESTAÑA 1: REGISTRO ---
 with tab1:
