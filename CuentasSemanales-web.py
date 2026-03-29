@@ -114,36 +114,59 @@ with tab2:
 # --- PESTAÑA 3: ANÁLISIS TEMPORAL ---
 with tab3:
     if not df.empty:
-        st.subheader("📅 Análisis de Participación Histórica")
+        st.subheader("📅 Análisis de Participación Real (Suma de Montos)")
         
-        df_temp = df.copy().sort_values('fecha')
+        # 1. Asegurar limpieza de datos
+        df_temp = df.copy()
+        # Forzar monto a numérico (elimina cualquier error de formato string)
+        df_temp['monto'] = pd.to_numeric(df_temp['monto'], errors='coerce').fillna(0)
+        df_temp['fecha'] = pd.to_datetime(df_temp['fecha'])
         df_temp['mes_año'] = df_temp['fecha'].dt.strftime('%Y-%m')
         
-        # Agrupaciones clave (SUMA de monto)
-        res_mes = df_temp.groupby(['mes_año', 'responsable'])['monto'].sum().reset_index()
-        total_hist = df_temp.groupby('responsable')['monto'].sum().reset_index()
+        # 2. AGRUPACIÓN MANUAL (Esto garantiza que la torta reciba la SUMA)
+        # Agrupamos por responsable y SUMAMOS la columna monto
+        df_participacion = df_temp.groupby('responsable')['monto'].sum().reset_index()
 
-        # 1. Gráfico de Barras Apiladas (Volumen de gasto mensual)
-        st.write("**Evolución Mensual (Suma de montos)**")
-        fig_bar = px.bar(res_mes, x='mes_año', y='monto', color='responsable', barmode='stack', text_auto='.2s')
-        st.plotly_chart(fig_bar, use_container_width=True)
-
-        st.markdown("---")
         col_t1, col_t2 = st.columns(2)
         
         with col_t1:
-            st.write("**Proporción Real del Gasto Histórico**")
-            # --- FIX: Usar total_hist que contiene la suma de montos ---
-            fig_pie_h = px.pie(total_hist, values='monto', names='responsable', hole=0.5, title="Distribución de Dinero Aportado")
-            fig_pie_h.update_traces(textinfo='percent+value', texttemplate='%{percent}<br>$%{value:,.0f}')
-            st.plotly_chart(fig_pie_h, use_container_width=True)
+            st.write("**Distribución del Gasto Total ($)**")
+            # CRUCIAL: values='monto' toma la suma, NO el conteo de filas
+            fig_pie_real = px.pie(
+                df_participacion, 
+                values='monto', 
+                names='responsable',
+                hole=0.5,
+                color_discrete_sequence=px.colors.qualitative.Safe
+            )
+            # Mostramos porcentaje y valor real para verificar
+            fig_pie_real.update_traces(
+                textinfo='percent+value', 
+                texttemplate='%{percent}<br>$%{value:,.0f}'
+            )
+            st.plotly_chart(fig_pie_real, use_container_width=True)
 
         with col_t2:
-            st.write("**Tabla Resumen Mensual ($)**")
+            st.write("**Resumen de Pagos por Mes**")
+            # Pivot para la tabla comparativa
+            res_mes = df_temp.groupby(['mes_año', 'responsable'])['monto'].sum().reset_index()
             pivot = res_mes.pivot(index='mes_año', columns='responsable', values='monto').fillna(0)
-            pivot['Total'] = pivot.sum(axis=1)
+            pivot['Total Mes'] = pivot.sum(axis=1)
             st.dataframe(pivot.style.format("${:,.0f}"), use_container_width=True)
+
+        # 3. Gráfico de Barras Apiladas
+        st.markdown("---")
+        st.write("**Evolución Mensual Acumulada**")
+        fig_barras = px.bar(
+            res_mes, 
+            x='mes_año', 
+            y='monto', 
+            color='responsable',
+            barmode='stack',
+            text_auto='.2s'
+        )
+        st.plotly_chart(fig_barras, use_container_width=True)
     else:
-        st.info("Registra datos para ver el análisis.")
+        st.info("No hay datos para analizar.")
 
 st.sidebar.success("Conectado a Supabase")
