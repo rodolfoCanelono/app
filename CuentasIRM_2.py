@@ -45,7 +45,14 @@ def cargar_datos_db():
         df_raw = pd.DataFrame(response.data)
         if not df_raw.empty:
             # LIMPIEZA MATEMÁTICA: Forzamos monto a entero para evitar errores de interpretación
-            df_raw['monto'] = pd.to_numeric(df_raw['monto'], errors='coerce').fillna(0).astype(int)
+            df_raw['monto'] = (
+                df_raw['monto']
+                .astype(str)
+                .str.replace(',', '', regex=False)   # 🔥 QUITA COMAS DE MILES
+            )
+            st.write(df_raw[['monto']].head(10))
+            df_raw['monto'] = pd.to_numeric(df_raw['monto'], errors='coerce').fillna(0)
+            #df_raw['monto'] = pd.to_numeric(df_raw['monto'], errors='coerce').fillna(0).astype(int)
             df_raw['fecha'] = pd.to_datetime(df_raw['fecha'])
         return df_raw
     except:
