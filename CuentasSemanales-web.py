@@ -95,7 +95,7 @@ with tab1:
         c1, c2 = st.columns(2)
         with c1:
             con_in = st.selectbox("Concepto", LISTA_CONCEPTOS)
-            mon_in = st.number_input("Monto", min_value=0, step=1, format="%d")
+            mon_in = st.number_input("Monto", min_value=2000, step=2000, format="%d")
             pag_in = st.selectbox("Forma de Pago", LISTA_FORMAS_PAGO)
         with c2:
             fec_in = st.date_input("Fecha", datetime.now())
