@@ -83,7 +83,7 @@ df = cargar_datos_db()
 # =========================================================
 # 5. INTERFAZ PRINCIPAL
 # =========================================================
-st.title("📊 Gestión Financiera Pro - Rodolfo Canelón")
+st.title("📊 Gestión Financiera Móviles - Rodolfo Canelón")
 st.markdown("---")
 
 tab1, tab2, tab3, tab4 = st.tabs(["📝 Registro", "📈 Dashboard", "⚖️ Cuadre - Aportes", "🔮 Pronóstico"])
